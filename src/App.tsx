@@ -7,6 +7,7 @@ import { AuthGuard } from "./components/auth/AuthGuard";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
+import CreateProduct from "./pages/CreateProduct";
 import Handover from "./pages/Handover";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
@@ -44,6 +45,11 @@ const App = () => (
           <Route path="/products" element={
             <AuthGuard>
               <Products />
+            </AuthGuard>
+          } />
+          <Route path="/products/create" element={
+            <AuthGuard>
+              <CreateProduct />
             </AuthGuard>
           } />
           <Route path="/products/:id" element={

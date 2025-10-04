@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ProductCard } from '@/components/products/ProductCard';
 import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { useAppStore } from '@/lib/store';
 import type { ProductMeta } from '@/types';
 
 const Products = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedProduct, setSelectedProduct] = useState<ProductMeta | null>(null);
@@ -52,7 +54,7 @@ const Products = () => {
           <p className="text-muted-foreground">Manage and track all products in the supply chain</p>
         </div>
         {user?.role === 'MANUFACTURER' && (
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => navigate('/products/create')}>
             <Plus className="h-4 w-4" />
             Create Product
           </Button>
