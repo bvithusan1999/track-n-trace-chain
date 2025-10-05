@@ -18,6 +18,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import LiveTracking from "./pages/LiveTracking";
+import Analytics from "./pages/Analytics";
+import QRScannerPage from "./pages/QRScannerPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +63,9 @@ const App = () => (
             <Route path="products/create" element={<CreateProduct />} />
             <Route path="products/:id" element={<ProductDetail />} />
             <Route path="handover" element={<Handover />} />
+            <Route path="tracking" element={<LiveTracking />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="qr-scan" element={<QRScannerPage />} />
             <Route path="alerts" element={<Alerts />} />
             <Route path="settings" element={<Settings />} />
           </Route>
