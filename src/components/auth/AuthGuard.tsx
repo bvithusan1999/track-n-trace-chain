@@ -1,22 +1,29 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAppStore } from '@/lib/store';
+import { Navigate, useLocation } from "react-router-dom";
+import { ReactNode } from "react";
+import { useAppStore } from "@/lib/store";
 
 interface AuthGuardProps {
   children: ReactNode;
-  requireAuth?: boolean;
+  requireAuth?: boolean; // default = true
 }
 
-export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
-  const { user } = useAppStore();
+export const AuthGuard = ({ children, requireAuth = true }: AuthGuardProps) => {
+  const token = useAppStore((s) => s.token);
+  const user = useAppStore((s) => s.user);
+  const location = useLocation();
 
-  if (requireAuth && !user) {
-    return <Navigate to="/login" replace />;
+  const isAuthenticated = !!(token);
+
+  // 🔒 Protected route: must be authenticated
+  if (requireAuth && !isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!requireAuth && user) {
+  // 🚫 Public route (login/register): already authenticated → redirect to dashboard
+  if (!requireAuth && isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
+  // ✅ Otherwise render normally
   return <>{children}</>;
-}
+};

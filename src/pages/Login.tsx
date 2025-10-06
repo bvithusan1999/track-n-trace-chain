@@ -1,159 +1,126 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppStore } from '@/lib/store';
-import { useToast } from '@/hooks/use-toast';
-import { Lock, Mail, LogIn } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useConnect, useSignMessage, useDisconnect } from "wagmi";
+import { Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("Connect your wallet to continue");
+
   const navigate = useNavigate();
-  const { setUser } = useAppStore();
-  const { toast } = useToast();
+  const { connectAsync, connectors } = useConnect();
+  const { signMessageAsync } = useSignMessage();
+  const { disconnect } = useDisconnect();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const setAuth = useAppStore((s) => s.setAuth);
+  const setWalletConnection = useAppStore((s) => s.setWalletConnection);
 
-    // Simulate login delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      setStatus("Connecting to MetaMask...");
 
-    // Mock login - in real app, this would be an API call
-    const mockUsers = {
-      'manufacturer@vaccine.com': {
-        id: '1',
-        address: '0x1234567890123456789012345678901234567890' as const,
-        role: 'MANUFACTURER' as const,
-        displayName: 'Pfizer Vaccine Division',
-        email: 'manufacturer@vaccine.com',
-        organization: 'Pfizer Pharmaceuticals',
-        licenseNumber: 'MFG-001-2024',
-        certifications: ['WHO-GMP', 'FDA-Approved']
-      },
-      'distributor@vaccine.com': {
-        id: '2',
-        address: '0x2345678901234567890123456789012345678901' as const,
-        role: 'DISTRIBUTOR' as const,
-        displayName: 'VaccineDist Global',
-        email: 'distributor@vaccine.com',
-        organization: 'Global Vaccine Distribution Corp',
-        licenseNumber: 'DIST-002-2024',
-        certifications: ['Cold-Chain-Certified', 'WHO-Logistics']
-      },
-      'healthcare@vaccine.com': {
-        id: '3',
-        address: '0x3456789012345678901234567890123456789012' as const,
-        role: 'HEALTHCARE_PROVIDER' as const,
-        displayName: 'City Health Center',
-        email: 'healthcare@vaccine.com',
-        organization: 'Metropolitan Health Network',
-        licenseNumber: 'HCP-003-2024',
-        certifications: ['Immunization-Provider', 'Cold-Storage-Certified']
-      }
-    };
+      // ✅ Step 1: Connect wallet
+      const connector = connectors.find((c) => c.id === "injected") ?? connectors[0];
+      const { accounts } = await connectAsync({ connector });
+      const address = accounts[0] as `0x${string}`;
+      setWalletConnection(address);
 
-    const user = mockUsers[email as keyof typeof mockUsers];
-    
-    if (user && password === 'demo123') {
-      setUser(user);
-      toast({
-        title: "Login successful!",
-        description: `Welcome back, ${user.displayName}`,
+      // ✅ Step 2: Request nonce from backend
+      setStatus("Requesting nonce from backend...");
+      const { data } = await api.get("/auth/nonce", { params: { address } });
+
+      // ✅ Step 3: Ask MetaMask to sign message
+      setStatus("Please sign the message in MetaMask...");
+
+      // After fetching nonce + address
+      const message = `Registry Login\nAddress: ${address.toLowerCase()}\nNonce: ${data.nonce}`;
+
+      const signature = await signMessageAsync({
+        account: address,
+        message,
       });
-      navigate('/');
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Invalid credentials. Try manufacturer@vaccine.com / demo123",
-        variant: "destructive"
+
+
+      // const signature = await signMessageAsync({
+      //   account: address,
+      //   message: data.message,
+      // });
+
+      // ✅ Step 4: Send signature back to backend
+      setStatus("Verifying signature...");
+      const res = await api.post("/auth/login", { address, signature });
+
+      // ✅ Step 5: Store JWT + role + address in Zustand store
+      setAuth({
+        token: res.data.token,
+        role: res.data.role,
+        address: res.data.address,
       });
+
+      setStatus("✅ Login successful! Redirecting...");
+      setTimeout(() => navigate("/"), 1000);
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setStatus("❌ Failed to connect. Try again.");
+      disconnect();
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
-            <LogIn className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-2xl font-bold">VaccineChain Login</CardTitle>
-          <CardDescription>
-            Sign in to your VaccineChain account to manage the vaccine supply chain
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      <Card className="w-full max-w-md shadow-2xl bg-gray-900 border-gray-700 text-white transition-all duration-300">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-white">
+            🔐 Blockchain Login
+          </CardTitle>
+          <CardDescription className="text-center text-gray-400">
+            {status}
           </CardDescription>
         </CardHeader>
 
-        <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+        <CardContent>
+          <div className="flex flex-col items-center justify-center space-y-6 mt-4">
+            <img
+              src="/metamask-fox.svg"
+              alt="MetaMask"
+              className={`w-24 h-24 mb-2 ${loading ? "animate-bounce" : "animate-pulse"}`}
+            />
+          </div>
+        </CardContent>
+
+        <CardFooter className="flex justify-center">
+          <Button
+            disabled={loading}
+            onClick={handleLogin}
+            className={`w-full font-semibold py-2 text-white ${loading
+              ? "bg-gray-700 hover:bg-gray-700 cursor-not-allowed"
+              : "bg-orange-500 hover:bg-orange-600"
+              }`}
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="animate-spin w-4 h-4" />
+                Connecting...
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="bg-muted/50 p-3 rounded-lg text-sm">
-              <p className="font-medium mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>• manufacturer@vaccine.com / demo123</p>
-                <p>• distributor@vaccine.com / demo123</p>
-                <p>• healthcare@vaccine.com / demo123</p>
-              </div>
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
-
-            <div className="text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
-              <Link 
-                to="/register" 
-                className="text-primary hover:text-primary/80 font-medium transition-colors"
-              >
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+            ) : (
+              "🦊 Connect Wallet"
+            )}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

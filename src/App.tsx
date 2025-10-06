@@ -4,9 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthGuard } from "./components/auth/AuthGuard";
+import { useAppStore } from "@/lib/store";
 
-// import { DashboardLayout } from "./layouts/DashboardLayout";
-
+// ✅ Pages
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
@@ -17,66 +17,124 @@ import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
-import { DashboardLayout } from "./components/layout/DashboardLayout";
 import LiveTracking from "./pages/LiveTracking";
 import Analytics from "./pages/Analytics";
 import QRScannerPage from "./pages/QRScannerPage";
+import { DashboardLayout } from "./components/layout/DashboardLayout";
+
+// 🆕 (Optional placeholders for admin/supplier/warehouse)
+// import ManageUsers from "./pages/ManageUsers"; // For ADMIN
+// import Inventory from "./pages/Inventory"; // For WAREHOUSE
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* --- Public routes --- */}
-          <Route
-            path="/login"
-            element={
-              <AuthGuard requireAuth={false}>
-                <Login />
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <AuthGuard requireAuth={false}>
-                <Register />
-              </AuthGuard>
-            }
-          />
+const App = () => {
+  const { user, role } = useAppStore();
+  const userRole = user?.role || role;
 
-          {/* --- Protected routes with layout --- */}
-          <Route
-            path="/"
-            element={
-              <AuthGuard>
-                <DashboardLayout />
-              </AuthGuard>
-            }
-          >
-            <Route index element={<Index />} />
-            <Route path="products" element={<Products />} />
-            <Route path="products/create" element={<CreateProduct />} />
-            <Route path="products/:id" element={<ProductDetail />} />
-            <Route path="handover" element={<Handover />} />
-            <Route path="tracking" element={<LiveTracking />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="qr-scan" element={<QRScannerPage />} />
-            <Route path="alerts" element={<Alerts />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-          
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route
+              path="/login"
+              element={
+                <AuthGuard requireAuth={false}>
+                  <Login />
+                </AuthGuard>
+              }
+            />
 
-          {/* --- 404 fallback --- */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+
+            {/* Protected routes (Dashboard Layout) */}
+            <Route
+              path="/"
+              element={
+                <AuthGuard>
+                  <DashboardLayout />
+                </AuthGuard>
+              }
+            >
+
+
+              {/* 🔹 Role-based routes */}
+
+              {/* 🧩 ADMIN */}
+              {userRole === "ADMIN" && (
+                <>
+                  <Route index element={<Index />} />
+                  <Route path="register" element={<Register />} />
+                  <Route path="products" element={<Products />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="settings" element={<Settings />} />
+                </>
+              )}
+
+              {/* 🧩 MANUFACTURER */}
+              {userRole === "MANUFACTURER" && (
+                <>
+                  <Route index element={<Index />} />
+                  <Route path="products" element={<Products />} />
+                  <Route path="register" element={<Register />} />
+                  <Route path="products/create" element={<CreateProduct />} />
+                  <Route path="products/:id" element={<ProductDetail />} />
+                  <Route path="handover" element={<Handover />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="settings" element={<Settings />} />
+                </>
+              )}
+
+              {/* 🧩 SUPPLIER */}
+              {userRole === "SUPPLIER" && (
+                <>
+                  <Route index element={<Index />} />
+                  <Route path="register" element={<Register />} />
+                  <Route path="handover" element={<Handover />} />
+                  <Route path="products" element={<Products />} />
+                  <Route path="settings" element={<Settings />} />
+                </>
+              )}
+
+              {/* 🧩 WAREHOUSE */}
+              {userRole === "WAREHOUSE" && (
+                <>
+                  <Route index element={<Index />} />
+                  <Route path="register" element={<Register />} />
+                  {/* <Route path="inventory" element={<Inventory />} /> */}
+                  <Route path="handover" element={<Handover />} />
+                  <Route path="settings" element={<Settings />} />
+                </>
+              )}
+
+              {/* 🧩 USER */}
+              {userRole === "USER" && (
+                <>
+                  <Route index element={<QRScannerPage />} />
+                  <Route path="register" element={<Register />} />
+                  <Route path="qr-scan" element={<QRScannerPage />} />
+                </>
+              )}
+
+              {/* Fallback for unknown role */}
+              {!userRole && (
+                <>
+                  <Route path="qr-scan" element={<QRScannerPage />} />
+                  <Route path="register" element={<Register />} />
+                </>
+              )}
+            </Route>
+
+            {/* 404 fallback */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

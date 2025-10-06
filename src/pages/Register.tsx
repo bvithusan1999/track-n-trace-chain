@@ -1,262 +1,403 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAppStore } from '@/lib/store';
-import { useToast } from '@/hooks/use-toast';
-import { Role } from '@/types';
-import { UserPlus, Mail, Lock, Building, User, Factory, Truck, Store } from 'lucide-react';
-
-const roleOptions: { value: Role; label: string; description: string; icon: any }[] = [
-  {
-    value: 'MANUFACTURER',
-    label: 'Vaccine Manufacturer',
-    description: 'Produce and quality control vaccines',
-    icon: Factory
-  },
-  {
-    value: 'DISTRIBUTOR',
-    label: 'Distributor',
-    description: 'Cold chain distribution and logistics',
-    icon: Truck
-  },
-  {
-    value: 'HEALTHCARE_PROVIDER',
-    label: 'Healthcare Provider',
-    description: 'Hospitals and medical facilities',
-    icon: Store
-  },
-  {
-    value: 'VACCINATION_CENTER',
-    label: 'Vaccination Center',
-    description: 'Mass vaccination and immunization sites',
-    icon: Building
-  },
-  {
-    value: 'COLD_STORAGE',
-    label: 'Cold Storage Facility',
-    description: 'Temperature-controlled storage',
-    icon: Factory
-  }
-];
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import axios from "axios";
+import { useAppStore } from "@/lib/store";
+import { toast } from "sonner";
 
 export default function Register() {
-  const [formData, setFormData] = useState({
-    displayName: '',
-    email: '',
-    organization: '',
-    licenseNumber: '',
-    password: '',
-    confirmPassword: '',
-    role: '' as Role
-  });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setUser } = useAppStore();
-  const { toast } = useToast();
+  const { walletAddress, token } = useAppStore();
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const [registerForOther, setRegisterForOther] = useState(false);
+  const [otherPublicKey, setOtherPublicKey] = useState("");
+
+  const [form, setForm] = useState({
+    type: "MANUFACTURER",
+    legalName: "",
+    businessRegNo: "",
+    countryOfIncorporation: "",
+    personName: "",
+    designation: "",
+    email: "",
+    phone: "",
+    address: "",
+    // Manufacturer
+    productCategoriesManufactured: "",
+    certifications: "",
+    // Supplier
+    productCategoriesSupplied: "",
+    sourceRegions: "",
+    // Warehouse
+    officeAddress: "",
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords are identical",
-        variant: "destructive"
-      });
+
+    if (!walletAddress) {
+      toast.error("Please connect your wallet before registration.");
       return;
     }
 
-    setLoading(true);
+    const targetPublicKey = registerForOther
+      ? otherPublicKey.trim()
+      : walletAddress;
 
-    // Simulate registration delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (registerForOther && !otherPublicKey.trim()) {
+      toast.error("Please provide a public key for the other wallet.");
+      return;
+    }
 
-    // Mock registration - create user
-    const newUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      address: `0x${Math.random().toString(16).substr(2, 40)}` as const,
-      role: formData.role,
-      displayName: formData.displayName,
-      email: formData.email,
-      organization: formData.organization,
-      licenseNumber: formData.licenseNumber
-    };
+    if (!form.email.includes("@")) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
 
-    setUser(newUser);
-    toast({
-      title: "Registration successful!",
-      description: `Welcome to VaccineChain, ${formData.displayName}`,
-    });
-    navigate('/');
-    setLoading(false);
+    if (form.countryOfIncorporation.length < 2) {
+      toast.error("Country code must be at least 2 characters (e.g., US).");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 🔧 Build details dynamically by type
+      let details: Record<string, any> = {};
+
+      if (form.type === "MANUFACTURER") {
+        details = {
+          productCategoriesManufactured: form.productCategoriesManufactured
+            ? form.productCategoriesManufactured.split(",").map((s) => s.trim())
+            : [],
+          certifications: form.certifications
+            ? form.certifications.split(",").map((s) => s.trim())
+            : [],
+        };
+      } else if (form.type === "SUPPLIER") {
+        details = {
+          productCategoriesSupplied: form.productCategoriesSupplied
+            ? form.productCategoriesSupplied.split(",").map((s) => s.trim())
+            : [],
+          sourceRegions: form.sourceRegions
+            ? form.sourceRegions.split(",").map((s) => s.trim().toUpperCase())
+            : [],
+        };
+      } else if (form.type === "WAREHOUSE") {
+        details = {
+          officeAddress: form.officeAddress,
+          countryOfIncorporation: form.countryOfIncorporation
+            .trim()
+            .toUpperCase(),
+        };
+      }
+
+      const payload = {
+        type: form.type,
+        identification: {
+          uuid: crypto.randomUUID(),
+          publicKey: targetPublicKey,
+          legalName: form.legalName,
+          businessRegNo: form.businessRegNo,
+          countryOfIncorporation: form.countryOfIncorporation
+            .trim()
+            .toUpperCase(),
+        },
+        contact: {
+          personName: form.personName,
+          designation: form.designation,
+          email: form.email.trim(),
+          phone: form.phone,
+          address: form.address,
+        },
+        metadata: {
+          publicKey: walletAddress, // your wallet
+          smartContractRole: form.type,
+          dateOfRegistration: new Date().toISOString().split("T")[0],
+        },
+        details,
+      };
+
+      console.log("📦 Registration payload:", payload);
+
+      const response = await axios.post(
+        "http://localhost:5000/api/registrations",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        toast.success("Registration successful!");
+        navigate("/");
+      } else {
+        toast.error("Unexpected server response.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.error || "Registration failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
-            <UserPlus className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Join VaccineChain</CardTitle>
-          <CardDescription>
-            Register to participate in the global vaccine supply chain network
-          </CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <Card className="w-full max-w-3xl shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center">
+            Organization Registration
+          </CardTitle>
         </CardHeader>
 
-        <form onSubmit={handleRegister}>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="displayName"
-                    placeholder="Enter your name"
-                    value={formData.displayName}
-                    onChange={(e) => handleInputChange('displayName', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Organization Type */}
+            <div className="grid gap-2">
+              <Label htmlFor="type">Organization Type</Label>
+              <select
+                name="type"
+                value={form.type}
+                onChange={handleChange}
+                className="border rounded-md p-2 bg-card"
+              >
+                <option value="MANUFACTURER">Manufacturer</option>
+                <option value="SUPPLIER">Supplier</option>
+                <option value="WAREHOUSE">Warehouse</option>
+              </select>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="organization">Organization</Label>
-                <div className="relative">
-                  <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="organization"
-                    placeholder="Healthcare organization"
-                    value={formData.organization}
-                    onChange={(e) => handleInputChange('organization', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+            {/* Register for other wallet */}
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="checkbox"
+                id="registerForOther"
+                checked={registerForOther}
+                onChange={(e) => setRegisterForOther(e.target.checked)}
+              />
+              <Label htmlFor="registerForOther">
+                Register for another wallet
+              </Label>
+            </div>
+
+            {registerForOther && (
+              <div className="mt-2">
+                <Label htmlFor="otherPublicKey">Other Wallet Public Key</Label>
+                <Input
+                  id="otherPublicKey"
+                  name="otherPublicKey"
+                  value={otherPublicKey}
+                  onChange={(e) => setOtherPublicKey(e.target.value)}
+                  placeholder="0x1234...abcd"
+                  required={registerForOther}
+                />
+              </div>
+            )}
+
+            {/* Identification */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="legalName">Legal Name</Label>
+                <Input
+                  id="legalName"
+                  name="legalName"
+                  value={form.legalName}
+                  onChange={handleChange}
+                  placeholder="Organization Legal Name"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="businessRegNo">Business Reg. No</Label>
+                <Input
+                  id="businessRegNo"
+                  name="businessRegNo"
+                  value={form.businessRegNo}
+                  onChange={handleChange}
+                  placeholder="REG-12345"
+                  required
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="countryOfIncorporation">Country</Label>
+                <Input
+                  id="countryOfIncorporation"
+                  name="countryOfIncorporation"
+                  value={form.countryOfIncorporation}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      countryOfIncorporation: e.target.value
+                        .toUpperCase()
+                        .slice(0, 3),
+                    })
+                  }
+                  placeholder="US"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="pl-10"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="info@organization.example"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="licenseNumber">License Number</Label>
-              <div className="relative">
-                <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            {/* Contact */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="personName">Contact Person</Label>
                 <Input
-                  id="licenseNumber"
-                  placeholder="Professional license number"
-                  value={formData.licenseNumber}
-                  onChange={(e) => handleInputChange('licenseNumber', e.target.value)}
-                  className="pl-10"
+                  id="personName"
+                  name="personName"
+                  value={form.personName}
+                  onChange={handleChange}
+                  placeholder="Jane Doe"
                   required
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Organization Type</Label>
-              <Select value={formData.role} onValueChange={(value: Role) => handleInputChange('role', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select organization type" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border border-border">
-                  {roleOptions.map((role) => {
-                    const IconComponent = role.icon;
-                    return (
-                      <SelectItem key={role.value} value={role.value} className="cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <IconComponent className="w-4 h-4 text-primary" />
-                          <div>
-                            <div className="font-medium">{role.label}</div>
-                            <div className="text-xs text-muted-foreground">{role.description}</div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <div>
+                <Label htmlFor="designation">Designation</Label>
+                <Input
+                  id="designation"
+                  name="designation"
+                  value={form.designation}
+                  onChange={handleChange}
+                  placeholder="Operations Manager"
+                  required
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+              <div>
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="+1-555-123-0000"
+                  required
+                />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  value={form.address}
+                  onChange={handleChange}
+                  placeholder="200 Logistics Way, Oakland, CA"
+                  required
+                />
               </div>
             </div>
-          </CardContent>
 
-          <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={loading || !formData.role}
-            >
-              {loading ? "Creating account..." : "Create Account"}
+            {/* Manufacturer Fields */}
+            {form.type === "MANUFACTURER" && (
+              <>
+                <div>
+                  <Label htmlFor="productCategoriesManufactured">
+                    Product Categories (comma separated)
+                  </Label>
+                  <Input
+                    id="productCategoriesManufactured"
+                    name="productCategoriesManufactured"
+                    value={form.productCategoriesManufactured}
+                    onChange={handleChange}
+                    placeholder="Widgets, Gadgets"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="certifications">
+                    Certifications (comma separated)
+                  </Label>
+                  <Input
+                    id="certifications"
+                    name="certifications"
+                    value={form.certifications}
+                    onChange={handleChange}
+                    placeholder="ISO9001"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Supplier Fields */}
+            {form.type === "SUPPLIER" && (
+              <>
+                <div>
+                  <Label htmlFor="productCategoriesSupplied">
+                    Supplied Categories (comma separated)
+                  </Label>
+                  <Input
+                    id="productCategoriesSupplied"
+                    name="productCategoriesSupplied"
+                    value={form.productCategoriesSupplied}
+                    onChange={handleChange}
+                    placeholder="Steel, Aluminum"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sourceRegions">
+                    Source Regions (comma separated country codes)
+                  </Label>
+                  <Input
+                    id="sourceRegions"
+                    name="sourceRegions"
+                    value={form.sourceRegions}
+                    onChange={handleChange}
+                    placeholder="CN, MY"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Warehouse Fields */}
+            {form.type === "WAREHOUSE" && (
+              <div>
+                <Label htmlFor="officeAddress">Office Address</Label>
+                <Input
+                  id="officeAddress"
+                  name="officeAddress"
+                  value={form.officeAddress}
+                  onChange={handleChange}
+                  placeholder="200 Logistics Way, Oakland, CA"
+                  required
+                />
+              </div>
+            )}
+
+            <Button type="submit" className="w-full mt-4" disabled={loading}>
+              {loading ? "Registering..." : "Register"}
             </Button>
-
-            <div className="text-center text-sm">
-              <span className="text-muted-foreground">Already have an account? </span>
-              <Link 
-                to="/login" 
-                className="text-primary hover:text-primary/80 font-medium transition-colors"
-              >
-                Sign in
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+          </form>
+        </CardContent>
       </Card>
     </div>
   );
