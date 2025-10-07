@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
-import { useAppStore } from "@/lib/store";
+import { registrationService } from "@/services/registrationService";
 import {
     Card,
     CardHeader,
@@ -19,36 +18,18 @@ import {
 } from "@/components/ui/tabs";
 
 export default function ManageUsers() {
-    const { token } = useAppStore();
     const queryClient = useQueryClient();
     const [selected, setSelected] = useState<any | null>(null);
 
-    // 🔹 Fetch pending registrations
-    const {
-        data: pending,
-        isLoading: loadingPending,
-    } = useQuery({
+    // ✅ Queries
+    const { data: pending, isLoading: loadingPending } = useQuery({
         queryKey: ["pending-registrations"],
-        queryFn: async () => {
-            const res = await axios.get("http://localhost:5000/api/registrations/pending", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            return res.data;
-        },
+        queryFn: registrationService.getPending,
     });
 
-    // 🔹 Fetch approved users
-    const {
-        data: users,
-        isLoading: loadingUsers,
-    } = useQuery({
+    const { data: users, isLoading: loadingUsers } = useQuery({
         queryKey: ["approved-users"],
-        queryFn: async () => {
-            const res = await axios.get("http://localhost:5000/api/registrations/approved", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            return res.data;
-        },
+        queryFn: registrationService.getApproved,
     });
 
     // 🔹 Fetch single user details
@@ -64,7 +45,7 @@ export default function ManageUsers() {
         }
     };
 
-    // 🔹 Approve user
+    // ✅ Approve pending registration
     const approveMutation = useMutation({
         mutationFn: async (registrationId: string) => {
             await axios.patch(
@@ -94,7 +75,7 @@ export default function ManageUsers() {
                     <TabsTrigger value="pending">Pending</TabsTrigger>
                 </TabsList>
 
-                {/* ✅ Approved Users Tab */}
+                {/* ✅ Approved Users */}
                 <TabsContent value="users">
                     {loadingUsers ? (
                         <div className="flex items-center justify-center py-10 text-muted-foreground">
@@ -127,7 +108,7 @@ export default function ManageUsers() {
                     )}
                 </TabsContent>
 
-                {/* 🕓 Pending Tab */}
+                {/* 🕓 Pending Users */}
                 <TabsContent value="pending">
                     {loadingPending ? (
                         <div className="flex items-center justify-center py-10 text-muted-foreground">
