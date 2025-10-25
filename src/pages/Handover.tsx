@@ -235,7 +235,7 @@ const Handover = () => {
       {/* Manufacturer view: create shipment and review products */}
       {role === 'MANUFACTURER' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
+          {/* <Card>
             <CardHeader><CardTitle>Create Shipment</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={handleCreateShipment} className="space-y-4">
@@ -328,29 +328,7 @@ const Handover = () => {
                 </Button>
               </form>
             </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Your Products</CardTitle></CardHeader>
-            <CardContent>
-              {loadingProducts ? (
-                <div className="flex items-center gap-2 text-muted-foreground py-8"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>
-              ) : userProducts.length === 0 ? (
-                <p className="text-muted-foreground">No products</p>
-              ) : (
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {userProducts.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div>
-                        <p className="font-medium">{product.productName}</p>
-                        <p className="text-xs text-muted-foreground">ID: {product.id}</p>
-                      </div>
-                      <Badge variant="secondary">{(product as any).status ?? 'UNKNOWN'}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          </Card> */}
           <Card>
             <CardHeader><CardTitle>My Shipments</CardTitle></CardHeader>
             <CardContent>
@@ -383,6 +361,29 @@ const Handover = () => {
               )}
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader><CardTitle>Your Products</CardTitle></CardHeader>
+            <CardContent>
+              {loadingProducts ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-8"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>
+              ) : userProducts.length === 0 ? (
+                <p className="text-muted-foreground">No products</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {userProducts.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <p className="font-medium">{product.productName}</p>
+                        <p className="text-xs text-muted-foreground">ID: {product.id}</p>
+                      </div>
+                      <Badge variant="secondary">{(product as any).status ?? 'UNKNOWN'}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
       )}
 
