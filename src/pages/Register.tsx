@@ -133,6 +133,7 @@ export default function Register() {
   const navigate = useNavigate();
   const { walletAddress, token } = useAppStore();
 
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [registerForOther, setRegisterForOther] = useState(false);
   const [otherPublicKey, setOtherPublicKey] = useState("");
   const [emailErrorShown, setEmailErrorShown] = useState(false);
@@ -148,7 +149,7 @@ export default function Register() {
     email: "",
     phone: "",
     address: "",
-    dateOfRegistration: "",
+    dateOfRegistration: today,
     // Manufacturer
     productCategoriesManufactured: "",
     certifications: "",
@@ -423,6 +424,23 @@ export default function Register() {
       return;
     }
 
+    if (name === "dateOfRegistration") {
+      if (!value) {
+        toast.error("Date of registration cannot be empty.");
+        setForm((prev) => ({ ...prev, dateOfRegistration: today }));
+        return;
+      }
+
+      if (value < today) {
+        toast.error("Date of registration must be today or later.");
+        setForm((prev) => ({ ...prev, dateOfRegistration: today }));
+        return;
+      }
+
+      setForm((prev) => ({ ...prev, dateOfRegistration: value }));
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -546,6 +564,11 @@ export default function Register() {
       !validatePhoneForCountry(form.phone, form.countryOfIncorporation)
     ) {
       toast.error("Please enter a valid phone number for the selected country.");
+      return;
+    }
+
+    if (!form.dateOfRegistration || form.dateOfRegistration < today) {
+      toast.error("Date of registration must be today or later.");
       return;
     }
 
@@ -866,6 +889,8 @@ export default function Register() {
                 type="date"
                 value={form.dateOfRegistration}
                 onChange={handleChange}
+                min={today}
+                max={today}
               />
             </div>
 
