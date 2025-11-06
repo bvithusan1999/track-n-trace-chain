@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,31 @@ import type { CountryCode } from "libphonenumber-js";
 type SearchableSelectOption = {
   label: string;
   value: string;
+};
+
+const getStateNamesForCountry = (countryCode: string): string[] => {
+  return State.getStatesOfCountry(countryCode).map((state) =>
+    state.name.toLowerCase()
+  );
+};
+
+const getCityNamesForCountry = (countryCode: string): string[] => {
+  const states = State.getStatesOfCountry(countryCode);
+  const citySet = new Set<string>();
+
+  states.forEach((state) => {
+    City.getCitiesOfState(countryCode, state.isoCode).forEach((city) => {
+      citySet.add(city.name.toLowerCase());
+    });
+  });
+
+  if (citySet.size === 0) {
+    City.getAllCities()
+      .filter((city) => city.countryCode === countryCode)
+      .forEach((city) => citySet.add(city.name.toLowerCase()));
+  }
+
+  return Array.from(citySet);
 };
 
 interface SearchableSelectProps {
@@ -138,6 +163,7 @@ export default function Register() {
   const [otherPublicKey, setOtherPublicKey] = useState("");
   const [emailErrorShown, setEmailErrorShown] = useState(false);
   const [phoneErrorShown, setPhoneErrorShown] = useState(false);
+  const [addressErrorShown, setAddressErrorShown] = useState(false);
 
   const [form, setForm] = useState({
     type: "MANUFACTURER",
@@ -298,6 +324,63 @@ export default function Register() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, []);
 
+  const selectedCountry = useMemo(
+    () =>
+      countryOptions.find(
+        (option) => option.value === form.countryOfIncorporation
+      ) ?? null,
+    [countryOptions, form.countryOfIncorporation]
+  );
+
+  const selectedCountryStateNames = useMemo(() => {
+    if (!selectedCountry) {
+      return [];
+    }
+    return getStateNamesForCountry(selectedCountry.value);
+  }, [selectedCountry]);
+
+  const selectedCountryCityNames = useMemo(() => {
+    if (!selectedCountry) {
+      return [];
+    }
+    return getCityNamesForCountry(selectedCountry.value);
+  }, [selectedCountry]);
+
+  const doesAddressMatchCountry = useCallback(
+    (
+      address: string,
+      country: SearchableSelectOption | null,
+      stateNames?: string[],
+      cityNames?: string[]
+    ) => {
+      if (!country) {
+        return true;
+      }
+
+      const lowerAddress = address.toLowerCase();
+
+      if (
+        lowerAddress.includes(country.label.toLowerCase()) ||
+        lowerAddress.includes(country.value.toLowerCase())
+      ) {
+        return true;
+      }
+
+      const statesToCheck = stateNames ?? selectedCountryStateNames;
+      if (statesToCheck.some((state) => lowerAddress.includes(state))) {
+        return true;
+      }
+
+      const citiesToCheck = cityNames ?? selectedCountryCityNames;
+      if (citiesToCheck.some((city) => lowerAddress.includes(city))) {
+        return true;
+      }
+
+      return false;
+    },
+    [selectedCountryStateNames, selectedCountryCityNames]
+  );
+
   const selectedCheckpointCountry = useMemo(
     () =>
       countryOptions.find(
@@ -441,6 +524,33 @@ export default function Register() {
       return;
     }
 
+    if (name === "address") {
+      if (!form.countryOfIncorporation) {
+        toast.error("Please select a country of incorporation before entering the address.");
+        return;
+      }
+
+      if (!value.trim()) {
+        setForm((prev) => ({ ...prev, address: "" }));
+        if (addressErrorShown) {
+          setAddressErrorShown(false);
+        }
+        return;
+      }
+
+      setForm((prev) => ({ ...prev, address: value }));
+
+      const matchesCountry = doesAddressMatchCountry(value, selectedCountry);
+      if (!matchesCountry && !addressErrorShown) {
+        toast.error(`Address must be located in ${selectedCountry?.label ?? "the selected country"}.`);
+        setAddressErrorShown(true);
+      } else if (matchesCountry && addressErrorShown) {
+        setAddressErrorShown(false);
+      }
+
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -450,6 +560,7 @@ export default function Register() {
     const nextCountry = option?.value ?? "";
     const previousCountry = form.countryOfIncorporation;
     let nextPhone = form.phone;
+    let nextAddress = form.address;
 
     if (nextCountry) {
       nextPhone = form.phone.trim()
@@ -467,6 +578,7 @@ export default function Register() {
       ...prev,
       countryOfIncorporation: nextCountry,
       phone: nextPhone,
+      address: nextAddress,
     }));
 
     if (!nextCountry || !nextPhone.trim()) {
@@ -490,6 +602,39 @@ export default function Register() {
       setPhoneErrorShown(true);
     } else if (isValidPhone && phoneErrorShown) {
       setPhoneErrorShown(false);
+    }
+
+    if (!nextCountry) {
+      if (addressErrorShown) {
+        setAddressErrorShown(false);
+      }
+      return;
+    }
+
+    if (!nextAddress.trim()) {
+      if (addressErrorShown) {
+        setAddressErrorShown(false);
+      }
+      return;
+    }
+
+    const referenceCountry =
+      option ?? countryOptions.find((country) => country.value === nextCountry) ?? null;
+    const stateNamesForNextCountry = getStateNamesForCountry(nextCountry);
+    const cityNamesForNextCountry = getCityNamesForCountry(nextCountry);
+
+    if (
+      !doesAddressMatchCountry(
+        nextAddress,
+        referenceCountry,
+        stateNamesForNextCountry,
+        cityNamesForNextCountry
+      )
+    ) {
+      toast.error(`Address must be located in ${referenceCountry?.label ?? "the selected country"}.`);
+      setAddressErrorShown(true);
+    } else if (addressErrorShown) {
+      setAddressErrorShown(false);
     }
   };
 
@@ -564,6 +709,11 @@ export default function Register() {
       !validatePhoneForCountry(form.phone, form.countryOfIncorporation)
     ) {
       toast.error("Please enter a valid phone number for the selected country.");
+      return;
+    }
+
+    if (selectedCountry && !doesAddressMatchCountry(form.address, selectedCountry)) {
+      toast.error(`Address must be located in ${selectedCountry.label}.`);
       return;
     }
 
@@ -876,7 +1026,11 @@ export default function Register() {
                   name="address"
                   value={form.address}
                   onChange={handleChange}
-                  placeholder="200 Logistics Way, Oakland, CA"
+                  placeholder={
+                    selectedCountry
+                      ? `Street, City, ${selectedCountry.label}`
+                      : "Street, City, Country"
+                  }
                   required
                 />
               </div>
