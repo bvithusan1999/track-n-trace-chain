@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,20 +6,147 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, User, Wifi, Thermometer, Moon, Save } from 'lucide-react';
-import { useAppStore } from '@/lib/store';
-import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Settings as SettingsIcon, User, Wifi, Thermometer, Moon, Save } from 'lucide-react';
+import { useAppStore } from '@/lib/store';
+import { toast } from '@/hooks/use-toast';
+import { registrationService } from '@/services/registrationService';
+import { Textarea } from '@/components/ui/textarea';
 
+type RegistrationRecord = {
+  id?: string;
+  type: string;
+  identification: {
+    publicKey: string;
+    legalName: string;
+    businessRegNo: string;
+    countryOfIncorporation: string;
+  };
+  contact: {
+    personName: string;
+    designation: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+  metadata: {
+    publicKey: string;
+    smartContractRole: string;
+    dateOfRegistration: string;
+  };
+  details: {
+    productCategoriesManufactured: string[];
+    certifications: string[];
+  };
+  checkpoint: {
+    name: string;
+    address: string;
+    latitude: string;
+    longitude: string;
+    state: string;
+    country: string;
+  };
+};
+
+type ConnectionSettings = {
+  rpcUrl: string;
+  wsUrl: string;
+  mqttUrl: string;
+};
+
+const emptyRegistration: RegistrationRecord = {
+  type: '',
+  identification: {
+    publicKey: '',
+    legalName: '',
+    businessRegNo: '',
+    countryOfIncorporation: '',
+  },
+  contact: {
+    personName: '',
+    designation: '',
+    email: '',
+    phone: '',
+    address: '',
+  },
+  metadata: {
+    publicKey: '',
+    smartContractRole: '',
+    dateOfRegistration: '',
+  },
+  details: {
+    productCategoriesManufactured: [],
+    certifications: [],
+  },
+  checkpoint: {
+    name: '',
+    address: '',
+    latitude: '',
+    longitude: '',
+    state: '',
+    country: '',
+  },
+};
+
+const normalizeRegistration = (data: Partial<RegistrationRecord> | null | undefined): RegistrationRecord => ({
+  ...emptyRegistration,
+  ...(data ?? {}),
+  identification: {
+    ...emptyRegistration.identification,
+    ...(data?.identification ?? {}),
+  },
+  contact: {
+    ...emptyRegistration.contact,
+    ...(data?.contact ?? {}),
+  },
+  metadata: {
+    ...emptyRegistration.metadata,
+    ...(data?.metadata ?? {}),
+  },
+  details: {
+    ...emptyRegistration.details,
+    ...(data?.details ?? {}),
+  },
+  checkpoint: {
+    ...emptyRegistration.checkpoint,
+    ...(data?.checkpoint ?? {}),
+  },
+});
+
+const resolveRegistrationPayload = (raw: unknown): Partial<RegistrationRecord> | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as Record<string, unknown>;
+
+  if ('payload' in record && typeof record.payload === 'object' && record.payload !== null) {
+    const payload = { ...(record.payload as Partial<RegistrationRecord>) };
+    if (!payload.type && typeof record.reg_type === 'string') {
+      payload.type = record.reg_type as RegistrationRecord['type'];
+    }
+    return payload;
+  }
+
+  return raw as Partial<RegistrationRecord>;
+};
+
+const listToTextareaValue = (values: string[] | undefined): string =>
+  (values ?? []).join('\n');
+
+const textareaValueToList = (value: string): string[] =>
+  value
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 
 const Settings = () => {
   const {
+    uuid,
     user,
     temperatureUnit,
     darkMode,
@@ -27,194 +154,195 @@ const Settings = () => {
     setTemperatureUnit,
     setDarkMode,
     setRealtimeSource,
-    setUser
+    setUser,
   } = useAppStore();
 
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [editData, setEditData] = useState({
-    type: '',
-    identification: {
-      publicKey: '',
-      legalName: '',
-      businessRegNo: '',
-      countryOfIncorporation: ''
-    },
-    contact: {
-      personName: '',
-      designation: '',
-      email: '',
-      phone: '',
-      address: ''
-    },
-    metadata: {
-      publicKey: '',
-      smartContractRole: '',
-      dateOfRegistration: ''
-    },
-    details: {
-      productCategoriesManufactured: [],
-      certifications: []
-    },
-    checkpoint: {
-      name: '',
-      address: '',
-      latitude: '',
-      longitude: '',
-      state: '',
-      country: ''
-    }
-  }); // Placeholder for future use
+  const registrationId = uuid;
+  console.log('Settings page - registrationId:', registrationId);
 
 
-  const [localSettings, setLocalSettings] = useState({
-    displayName: user?.displayName || '',
-    email: user?.email || '',
-    organization: user?.organization || '',
-    licenseNumber: user?.licenseNumber || '',
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [registration, setRegistration] = useState<RegistrationRecord | null>(null);
+  const [editableRegistration, setEditableRegistration] = useState<RegistrationRecord>(emptyRegistration);
+  const [connectionSettings, setConnectionSettings] = useState<ConnectionSettings>({
     rpcUrl: 'https://sepolia.infura.io/v3/demo',
     wsUrl: 'wss://ws.example.com/telemetry',
     mqttUrl: 'wss://mqtt.example.com:8083/mqtt',
   });
 
-  const handleOpenEdit = async () => {
-    setOpen(true);
-    setLoading(true);
-    try {
-      const userId = user?.id;
-      const response = await fetch(`http://localhost:5000/api/registrations/${userId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-      const data = await response.json();
-      setEditData({
-        type: data.type || '',
-        identification: {
-          publicKey: data.identification?.publicKey || '',
-          legalName: data.identification?.legalName || '',
-          businessRegNo: data.identification?.businessRegNo || '',
-          countryOfIncorporation: data.identification?.countryOfIncorporation || ''
-        },
-        contact: {
-          personName: data.contact?.personName || '',
-          designation: data.contact?.designation || '',
-          email: data.contact?.email || '',
-          phone: data.contact?.phone || '',
-          address: data.contact?.address || ''
-        },
-        metadata: {
-          publicKey: data.metadata?.publicKey || '',
-          smartContractRole: data.metadata?.smartContractRole || '',
-          dateOfRegistration: data.metadata?.dateOfRegistration || ''
-        },
-        details: {
-          productCategoriesManufactured: data.details?.productCategoriesManufactured || [],
-          certifications: data.details?.certifications || []
-        },
-        checkpoint: {
-          name: data.checkpoint?.name || '',
-          address: data.checkpoint?.address || '',
-          latitude: data.checkpoint?.latitude || '',
-          longitude: data.checkpoint?.longitude || '',
-          state: data.checkpoint?.state || '',
-          country: data.checkpoint?.country || ''
+  useEffect(() => {
+    if (!registrationId) {
+      setRegistration(null);
+      return;
+    }
+
+    let isMounted = true;
+    setIsProfileLoading(true);
+
+    registrationService
+      .getById(registrationId)
+      .then((data) => {
+        if (!isMounted) return;
+        const payload = resolveRegistrationPayload(data);
+        const normalized = normalizeRegistration(payload);
+        setRegistration(normalized);
+        setEditableRegistration(normalized);
+      })
+      .catch((error) => {
+        console.error('Error fetching registration:', error);
+        toast({
+          title: 'Unable to load profile',
+          description: 'Please try again later.',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsProfileLoading(false);
         }
       });
 
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load user data. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+    return () => {
+      isMounted = false;
+    };
+  }, [registrationId]);
+
+  const handleOpenProfileDialog = () => {
+    setEditableRegistration(registration ? normalizeRegistration(registration) : emptyRegistration);
+    setIsProfileDialogOpen(true);
   };
 
-  const handleSaveEdit = async () => {
-    setLoading(true);
+  const handleCloseProfileDialog = () => {
+    if (isProfileSaving) return;
+    setIsProfileDialogOpen(false);
+  };
 
-    try {
-      const userId = user?.address || 'userid';
+  const updateIdentificationField = (field: keyof RegistrationRecord['identification'], value: string) => {
+    setEditableRegistration((prev) => ({
+      ...prev,
+      identification: {
+        ...prev.identification,
+        [field]: value,
+      },
+    }));
+  };
 
-      const response = await fetch(`http://localhost:5000/api/registrations/${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editData)
+  const updateContactField = (field: keyof RegistrationRecord['contact'], value: string) => {
+    setEditableRegistration((prev) => ({
+      ...prev,
+      contact: {
+        ...prev.contact,
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateMetadataField = (field: keyof RegistrationRecord['metadata'], value: string) => {
+    setEditableRegistration((prev) => ({
+      ...prev,
+      metadata: {
+        ...prev.metadata,
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateDetailsField = (field: keyof RegistrationRecord['details'], value: string[]) => {
+    setEditableRegistration((prev) => ({
+      ...prev,
+      details: {
+        ...prev.details,
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateCheckpointField = (field: keyof RegistrationRecord['checkpoint'], value: string) => {
+    setEditableRegistration((prev) => ({
+      ...prev,
+      checkpoint: {
+        ...prev.checkpoint,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveRegistration = async () => {
+    if (!registrationId) {
+      toast({
+        title: 'Missing user identifier',
+        description: 'Cannot update profile without a valid registration id.',
+        variant: 'destructive',
       });
+      return;
+    }
 
-      if (!response.ok) {
-        throw new Error('Failed to update user data');
-      }
-
-      const updatedData = await response.json();
+    setIsProfileSaving(true);
+    try {
+      const payload = normalizeRegistration(editableRegistration);
+      const requestBody = {
+        payload,
+        reg_type: payload.type || registration?.type || 'MANUFACTURER',
+      };
+      const updated = await registrationService.update(registrationId, requestBody);
+      const normalized = normalizeRegistration(resolveRegistrationPayload(updated));
+      setRegistration(normalized);
+      setEditableRegistration(normalized);
 
       toast({
-        title: "Success",
-        description: "Your details have been updated successfully",
+        title: 'Profile saved',
+        description: 'Registration details have been updated.',
       });
 
-      setOpen(false);
-
-      // Optionally update local user state if needed
       if (user) {
         setUser({
           ...user,
-          displayName: editData.contact.personName,
-          email: editData.contact.email,
-          organization: editData.identification.legalName,
+          displayName: normalized.contact.personName || user.displayName,
+          email: normalized.contact.email || user.email,
+          organization: normalized.identification.legalName || user.organization,
         });
       }
 
+      setIsProfileDialogOpen(false);
     } catch (error) {
-      console.error('Error updating user data:', error);
+      console.error('Error updating registration:', error);
       toast({
-        title: "Error",
-        description: "Failed to update details. Please try again.",
-        variant: "destructive"
+        title: 'Save failed',
+        description: 'We could not update the profile. Please try again.',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsProfileSaving(false);
     }
   };
 
+  const realtimeOptions = useMemo(
+    () => [
+      { value: 'Mock', label: 'Mock Data', description: 'Use simulated data for demo' },
+      { value: 'WebSocket', label: 'WebSocket', description: 'Real-time WebSocket connection' },
+      { value: 'MQTT', label: 'MQTT', description: 'MQTT broker connection' },
+    ],
+    []
+  );
 
-  const handleSaveProfile = () => {
-    if (user) {
-      setUser({
-        ...user,
-        displayName: localSettings.displayName,
-        email: localSettings.email,
-        organization: localSettings.organization,
-        licenseNumber: localSettings.licenseNumber,
-      });
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been saved successfully",
-      });
-    }
+  const handleConnectionChange = (field: keyof ConnectionSettings, value: string) => {
+    setConnectionSettings((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleSaveConnections = () => {
     toast({
-      title: "Connection Settings Saved",
-      description: "Connection preferences have been updated",
+      title: 'Connection settings saved',
+      description: 'Connection preferences have been updated.',
     });
   };
 
-  const realtimeOptions = [
-    { value: 'Mock', label: 'Mock Data', description: 'Use simulated data for demo' },
-    { value: 'WebSocket', label: 'WebSocket', description: 'Real-time WebSocket connection' },
-    { value: 'MQTT', label: 'MQTT', description: 'MQTT broker connection' },
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">
@@ -223,349 +351,85 @@ const Settings = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* User Profile */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               User Profile
             </CardTitle>
-            <Button variant="outline" size="sm" className="gap-1" onClick={handleSaveEdit}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={handleOpenProfileDialog}
+              disabled={isProfileLoading}
+            >
               <SettingsIcon className="h-4 w-4" />
               Edit
             </Button>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Edit User Details</DialogTitle>
-                </DialogHeader>
-
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-6 py-2">
-                    {/* Type */}
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-type">Type</Label>
-                      <Input
-                        id="edit-type"
-                        className="placeholder:text-gray-400 focus:placeholder:text-blue-500"
-                        value={editData.type}
-                        onChange={(e) => setEditData(prev => ({ ...prev, type: e.target.value }))}
-                      />
-
-                    </div>
-
-                    {/* Identification Section */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-sm">Identification</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-publicKey">Public Key</Label>
-                          <Input
-                            id="edit-publicKey"
-                            value={editData.identification.publicKey}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              identification: { ...prev.identification, publicKey: e.target.value }
-                            }))}
-                            className="font-mono text-sm"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-legalName">Legal Name</Label>
-                          <Input
-                            id="edit-legalName"
-                            value={editData.identification.legalName}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              identification: { ...prev.identification, legalName: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-businessRegNo">Business Reg No</Label>
-                          <Input
-                            id="edit-businessRegNo"
-                            value={editData.identification.businessRegNo}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              identification: { ...prev.identification, businessRegNo: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-country">Country of Incorporation</Label>
-                          <Input
-                            id="edit-country"
-                            value={editData.identification.countryOfIncorporation}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              identification: { ...prev.identification, countryOfIncorporation: e.target.value }
-                            }))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Contact Section */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-sm">Contact Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-personName">Person Name</Label>
-                          <Input
-                            id="edit-personName"
-                            value={editData.contact.personName}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              contact: { ...prev.contact, personName: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-designation">Designation</Label>
-                          <Input
-                            id="edit-designation"
-                            value={editData.contact.designation}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              contact: { ...prev.contact, designation: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-email">Email</Label>
-                          <Input
-                            id="edit-email"
-                            type="email"
-                            value={editData.contact.email}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              contact: { ...prev.contact, email: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-phone">Phone</Label>
-                          <Input
-                            id="edit-phone"
-                            value={editData.contact.phone}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              contact: { ...prev.contact, phone: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="edit-address">Address</Label>
-                          <Input
-                            id="edit-address"
-                            value={editData.contact.address}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              contact: { ...prev.contact, address: e.target.value }
-                            }))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Checkpoint Section */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-sm">Checkpoint Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="edit-checkpoint-name">Name</Label>
-                          <Input
-                            id="edit-checkpoint-name"
-                            value={editData.checkpoint.name}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              checkpoint: { ...prev.checkpoint, name: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="edit-checkpoint-address">Address</Label>
-                          <Input
-                            id="edit-checkpoint-address"
-                            value={editData.checkpoint.address}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              checkpoint: { ...prev.checkpoint, address: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-checkpoint-latitude">Latitude</Label>
-                          <Input
-                            id="edit-checkpoint-latitude"
-                            value={editData.checkpoint.latitude}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              checkpoint: { ...prev.checkpoint, latitude: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-checkpoint-longitude">Longitude</Label>
-                          <Input
-                            id="edit-checkpoint-longitude"
-                            value={editData.checkpoint.longitude}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              checkpoint: { ...prev.checkpoint, longitude: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-checkpoint-state">State</Label>
-                          <Input
-                            id="edit-checkpoint-state"
-                            value={editData.checkpoint.state}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              checkpoint: { ...prev.checkpoint, state: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-checkpoint-country">Country</Label>
-                          <Input
-                            id="edit-checkpoint-country"
-                            value={editData.checkpoint.country}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              checkpoint: { ...prev.checkpoint, country: e.target.value }
-                            }))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Details Section */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-sm">Additional Details</h3>
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-categories">Product Categories (comma separated)</Label>
-                          <Input
-                            id="edit-categories"
-                            value={editData.details.productCategoriesManufactured.join(', ')}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              details: {
-                                ...prev.details,
-                                productCategoriesManufactured: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                              }
-                            }))}
-                            placeholder="e.g., Widgets, Gadgets, Tools"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-certifications">Certifications (comma separated)</Label>
-                          <Input
-                            id="edit-certifications"
-                            value={editData.details.certifications.join(', ')}
-                            onChange={(e) => setEditData(prev => ({
-                              ...prev,
-                              details: {
-                                ...prev.details,
-                                certifications: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                              }
-                            }))}
-                            placeholder="e.g., ISO9001, ISO14001"
-                          />
-                        </div>
-                      </div>
-                    </div>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            {isProfileLoading ? (
+              <p className="text-muted-foreground">Loading profile information…</p>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-muted-foreground">Organization</p>
+                  <p className="text-base font-medium">
+                    {registration?.identification.legalName || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Registration Type</p>
+                  <Badge variant="secondary" className="mt-1">
+                    {registration?.type || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Contact Person</p>
+                  <p className="text-base font-medium">
+                    {registration?.contact.personName || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Email</p>
+                  <p className="text-base font-medium">
+                    {registration?.contact.email || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Phone</p>
+                  <p className="text-base font-medium">
+                    {registration?.contact.phone || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Address</p>
+                  <p className="text-base font-medium">
+                    {registration?.contact.address || '—'}
+                  </p>
+                </div>
+                {user?.role && (
+                  <div>
+                    <p className="text-muted-foreground">Role</p>
+                    <Badge variant="outline" className="mt-1">
+                      {user.role}
+                    </Badge>
                   </div>
                 )}
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      // TODO: send name/password to your update API
-                      setOpen(false);
-                    }}
-                  >
-                    Save
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="display-name">Display Name</Label>
-              <Input
-                id="display-name"
-                value={localSettings.displayName}
-                onChange={(e) => setLocalSettings(prev => ({ ...prev, displayName: e.target.value }))}
-                placeholder="Enter your display name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={localSettings.email}
-                onChange={(e) => setLocalSettings(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="Enter your email"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="organization">Organization</Label>
-              <Input
-                id="organization"
-                value={localSettings.organization}
-                onChange={(e) => setLocalSettings(prev => ({ ...prev, organization: e.target.value }))}
-                placeholder="Enter your organization name"
-              />
-            </div>
-
-            {user && (
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Badge variant="secondary" className="w-fit">
-                  {user.role}
-                </Badge>
+                {user?.address && (
+                  <div>
+                    <p className="text-muted-foreground">Wallet Address</p>
+                    <code className="block text-xs bg-muted px-3 py-2 rounded break-all">
+                      {user.address}
+                    </code>
+                  </div>
+                )}
               </div>
             )}
-
-            {user?.address && (
-              <div className="space-y-2">
-                <Label>Wallet Address</Label>
-                <code className="block text-sm bg-muted px-3 py-2 rounded">
-                  {user.address}
-                </code>
-              </div>
-            )}
-
-            <Button onClick={handleSaveProfile} className="w-full gap-2">
-              <Save className="h-4 w-4" />
-              Save Profile
-            </Button>
           </CardContent>
         </Card>
 
-        {/* Application Preferences */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -574,7 +438,6 @@ const Settings = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Temperature Unit */}
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
@@ -605,26 +468,19 @@ const Settings = () => {
 
             <Separator />
 
-            {/* Dark Mode */}
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <Moon className="h-4 w-4" />
                   <Label>Dark Mode</Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Toggle dark theme appearance
-                </p>
+                <p className="text-sm text-muted-foreground">Toggle dark theme appearance</p>
               </div>
-              <Switch
-                checked={darkMode}
-                onCheckedChange={setDarkMode}
-              />
+              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
             </div>
 
             <Separator />
 
-            {/* Real-time Data Source */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Wifi className="h-4 w-4" />
@@ -642,7 +498,7 @@ const Settings = () => {
                       name="realtimeSource"
                       value={option.value}
                       checked={realtimeSource === option.value}
-                      onChange={(e) => setRealtimeSource(e.target.value as any)}
+                      onChange={(event) => setRealtimeSource(event.target.value as typeof realtimeSource)}
                       className="h-4 w-4"
                     />
                     <div className="grid gap-1.5 leading-none">
@@ -652,9 +508,7 @@ const Settings = () => {
                       >
                         {option.label}
                       </label>
-                      <p className="text-xs text-muted-foreground">
-                        {option.description}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{option.description}</p>
                     </div>
                   </div>
                 ))}
@@ -663,7 +517,6 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Connection Settings */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -677,33 +530,30 @@ const Settings = () => {
                 <Label htmlFor="rpc-url">RPC URL</Label>
                 <Input
                   id="rpc-url"
-                  value={localSettings.rpcUrl}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, rpcUrl: e.target.value }))}
+                  value={connectionSettings.rpcUrl}
+                  onChange={(event) => handleConnectionChange('rpcUrl', event.target.value)}
                   placeholder="https://sepolia.infura.io/v3/..."
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="ws-url">WebSocket URL</Label>
                 <Input
                   id="ws-url"
-                  value={localSettings.wsUrl}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, wsUrl: e.target.value }))}
+                  value={connectionSettings.wsUrl}
+                  onChange={(event) => handleConnectionChange('wsUrl', event.target.value)}
                   placeholder="wss://ws.example.com/telemetry"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="mqtt-url">MQTT URL</Label>
                 <Input
                   id="mqtt-url"
-                  value={localSettings.mqttUrl}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, mqttUrl: e.target.value }))}
+                  value={connectionSettings.mqttUrl}
+                  onChange={(event) => handleConnectionChange('mqttUrl', event.target.value)}
                   placeholder="wss://mqtt.example.com:8083/mqtt"
                 />
               </div>
             </div>
-
             <Button onClick={handleSaveConnections} className="gap-2">
               <Save className="h-4 w-4" />
               Save Connection Settings
@@ -711,7 +561,297 @@ const Settings = () => {
           </CardContent>
         </Card>
       </div>
-    </div >
+
+      <Dialog
+        open={isProfileDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCloseProfileDialog();
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit Registration Details</DialogTitle>
+            <DialogDescription>
+              Refresh your organization profile, contact information, and checkpoint details. These updates sync with the registry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-8 py-2">
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Organization
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Basic company identifiers used across the network.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-type">Registration Type</Label>
+                  <Input
+                    id="edit-type"
+                    value={editableRegistration.type}
+                    onChange={(event) => setEditableRegistration((prev) => ({ ...prev, type: event.target.value }))}
+                    placeholder="MANUFACTURER"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-legal-name">Legal Name</Label>
+                  <Input
+                    id="edit-legal-name"
+                    value={editableRegistration.identification.legalName}
+                    onChange={(event) => updateIdentificationField('legalName', event.target.value)}
+                    placeholder="Acme Manufacturing"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-business-reg">Business Registration Number</Label>
+                  <Input
+                    id="edit-business-reg"
+                    value={editableRegistration.identification.businessRegNo}
+                    onChange={(event) => updateIdentificationField('businessRegNo', event.target.value)}
+                    placeholder="REG-12345"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-country">Country of Incorporation</Label>
+                  <Input
+                    id="edit-country"
+                    value={editableRegistration.identification.countryOfIncorporation}
+                    onChange={(event) => updateIdentificationField('countryOfIncorporation', event.target.value)}
+                    placeholder="LK"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="edit-identification-public-key">Registration Public Key</Label>
+                  <Input
+                    id="edit-identification-public-key"
+                    value={editableRegistration.identification.publicKey}
+                    onChange={(event) => updateIdentificationField('publicKey', event.target.value)}
+                    placeholder="0x..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Contact Information
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Keep these details current so partners can reach the right person.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-contact-name">Contact Person</Label>
+                  <Input
+                    id="edit-contact-name"
+                    value={editableRegistration.contact.personName}
+                    onChange={(event) => updateContactField('personName', event.target.value)}
+                    placeholder="Jane Doe"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-designation">Designation</Label>
+                  <Input
+                    id="edit-designation"
+                    value={editableRegistration.contact.designation}
+                    onChange={(event) => updateContactField('designation', event.target.value)}
+                    placeholder="Director"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editableRegistration.contact.email}
+                    onChange={(event) => updateContactField('email', event.target.value)}
+                    placeholder="jane@company.example"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone">Phone</Label>
+                  <Input
+                    id="edit-phone"
+                    value={editableRegistration.contact.phone}
+                    onChange={(event) => updateContactField('phone', event.target.value)}
+                    placeholder="+1-555-123-0000"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="edit-address">Address</Label>
+                  <Textarea
+                    id="edit-address"
+                    value={editableRegistration.contact.address}
+                    onChange={(event) => updateContactField('address', event.target.value)}
+                    placeholder="123 Industry Way, Springfield"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Additional Details
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Share the products you handle and relevant certifications. Enter one item per line.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-product-categories">Product Categories Manufactured</Label>
+                  <Textarea
+                    id="edit-product-categories"
+                    value={listToTextareaValue(editableRegistration.details.productCategoriesManufactured)}
+                    onChange={(event) =>
+                      updateDetailsField('productCategoriesManufactured', textareaValueToList(event.target.value))
+                    }
+                    placeholder={'Vaccine\nMedical Devices'}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-certifications">Certifications</Label>
+                  <Textarea
+                    id="edit-certifications"
+                    value={listToTextareaValue(editableRegistration.details.certifications)}
+                    onChange={(event) => updateDetailsField('certifications', textareaValueToList(event.target.value))}
+                    placeholder={'ISO9001\nGMP'}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Checkpoint
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Where handovers occur or goods are manufactured.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="edit-checkpoint-name">Checkpoint Name</Label>
+                  <Input
+                    id="edit-checkpoint-name"
+                    value={editableRegistration.checkpoint.name}
+                    onChange={(event) => updateCheckpointField('name', event.target.value)}
+                    placeholder="Colombo Facility"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="edit-checkpoint-address">Address</Label>
+                  <Textarea
+                    id="edit-checkpoint-address"
+                    value={editableRegistration.checkpoint.address}
+                    onChange={(event) => updateCheckpointField('address', event.target.value)}
+                    placeholder="Colombo"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-checkpoint-state">State / Province</Label>
+                  <Input
+                    id="edit-checkpoint-state"
+                    value={editableRegistration.checkpoint.state}
+                    onChange={(event) => updateCheckpointField('state', event.target.value)}
+                    placeholder="Colombo District"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-checkpoint-country">Country</Label>
+                  <Input
+                    id="edit-checkpoint-country"
+                    value={editableRegistration.checkpoint.country}
+                    onChange={(event) => updateCheckpointField('country', event.target.value)}
+                    placeholder="Sri Lanka"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-checkpoint-latitude">Latitude</Label>
+                  <Input
+                    id="edit-checkpoint-latitude"
+                    value={editableRegistration.checkpoint.latitude}
+                    onChange={(event) => updateCheckpointField('latitude', event.target.value)}
+                    placeholder="4.56"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-checkpoint-longitude">Longitude</Label>
+                  <Input
+                    id="edit-checkpoint-longitude"
+                    value={editableRegistration.checkpoint.longitude}
+                    onChange={(event) => updateCheckpointField('longitude', event.target.value)}
+                    placeholder="52.255"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Metadata
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Contract-specific information synced with the blockchain layer.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="edit-metadata-public-key">Metadata Public Key</Label>
+                  <Input
+                    id="edit-metadata-public-key"
+                    value={editableRegistration.metadata.publicKey}
+                    onChange={(event) => updateMetadataField('publicKey', event.target.value)}
+                    placeholder="0x..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-smart-contract-role">Smart Contract Role</Label>
+                  <Input
+                    id="edit-smart-contract-role"
+                    value={editableRegistration.metadata.smartContractRole}
+                    onChange={(event) => updateMetadataField('smartContractRole', event.target.value)}
+                    placeholder="MANUFACTURER"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date-of-registration">Date of Registration</Label>
+                  <Input
+                    id="edit-date-of-registration"
+                    type="date"
+                    value={editableRegistration.metadata.dateOfRegistration?.slice(0, 10) || ''}
+                    onChange={(event) => updateMetadataField('dateOfRegistration', event.target.value)}
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseProfileDialog} disabled={isProfileSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveRegistration} disabled={isProfileSaving}>
+              {isProfileSaving ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
