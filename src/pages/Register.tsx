@@ -130,6 +130,7 @@ export default function Register() {
 
   const [registerForOther, setRegisterForOther] = useState(false);
   const [otherPublicKey, setOtherPublicKey] = useState("");
+  const [emailErrorShown, setEmailErrorShown] = useState(false);
 
   const [form, setForm] = useState({
     type: "MANUFACTURER",
@@ -164,6 +165,8 @@ export default function Register() {
   const requiresCheckpoint =
     form.type === "MANUFACTURER" || form.type === "WAREHOUSE";
   const showCheckpointSection = requiresCheckpoint || form.type === "CONSUMER";
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const countryOptions = useMemo(() => {
     const countries = Country.getAllCountries();
@@ -225,7 +228,28 @@ export default function Register() {
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === "businessRegNo" && value.length > 9) {
+      toast.error("Business registration number must be 9 characters or fewer.");
+      return;
+    }
+
+    if (name === "email") {
+      const isValidEmail = value.length === 0 || emailPattern.test(value);
+      setForm((prev) => ({ ...prev, [name]: value }));
+
+      if (!isValidEmail && !emailErrorShown) {
+        toast.error("Please enter a sssssssssssssssvalid email address.");
+        setEmailErrorShown(true);
+      } else if (isValidEmail && emailErrorShown) {
+        setEmailErrorShown(false);
+      }
+
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCountryOfIncorporationSelect = (
