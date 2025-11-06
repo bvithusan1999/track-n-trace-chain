@@ -55,6 +55,7 @@
     "ethers": "^6.15.0",
     "input-otp": "^1.4.2",
     "jsqr": "^1.4.0",
+    "libphonenumber-js": "^1.12.25",
     "lucide-react": "^0.462.0",
     "mapbox-gl": "^3.14.0",
     "next-themes": "^0.3.0",

@@ -20,6 +20,11 @@ import { cn } from "@/lib/utils";
 import { City, Country, State } from "country-state-city";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from "libphonenumber-js";
+import type { CountryCode } from "libphonenumber-js";
 
 type SearchableSelectOption = {
   label: string;
@@ -131,6 +136,7 @@ export default function Register() {
   const [registerForOther, setRegisterForOther] = useState(false);
   const [otherPublicKey, setOtherPublicKey] = useState("");
   const [emailErrorShown, setEmailErrorShown] = useState(false);
+  const [phoneErrorShown, setPhoneErrorShown] = useState(false);
 
   const [form, setForm] = useState({
     type: "MANUFACTURER",
@@ -167,6 +173,119 @@ export default function Register() {
   const showCheckpointSection = requiresCheckpoint || form.type === "CONSUMER";
 
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const normalizePhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/[^\d+]/g, "");
+    if (!cleaned) {
+      return "";
+    }
+    const digits = cleaned.replace(/\D/g, "");
+    return cleaned.startsWith("+") ? `+${digits}` : digits;
+  };
+
+  const validatePhoneForCountry = (
+    phone: string,
+    countryCode: string
+  ): boolean => {
+    const normalized = normalizePhoneNumber(phone);
+    if (!normalized) {
+      return false;
+    }
+
+    try {
+      const parsed =
+        parsePhoneNumberFromString(
+          normalized,
+          countryCode ? (countryCode as CountryCode) : undefined
+        ) ?? parsePhoneNumberFromString(normalized);
+
+      if (!parsed) {
+        return false;
+      }
+
+      if (!parsed.isValid()) {
+        return false;
+      }
+
+      if (countryCode) {
+        return parsed.country === countryCode;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const hasSubscriberDigits = (phone: string, countryCode: string): boolean => {
+    try {
+      const normalized = normalizePhoneNumber(phone);
+      if (!normalized) {
+        return false;
+      }
+
+      const parsed =
+        parsePhoneNumberFromString(
+          normalized,
+          countryCode ? (countryCode as CountryCode) : undefined
+        ) ?? parsePhoneNumberFromString(normalized);
+
+      if (!parsed) {
+        return false;
+      }
+
+      return parsed.nationalNumber.length > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const formatPhoneForCountry = (
+    phone: string,
+    countryCode: string,
+    previousCountryCode?: string
+  ): string => {
+    const normalized = normalizePhoneNumber(phone);
+
+    if (!countryCode) {
+      return normalized.startsWith("+") ? normalized : normalized ? `+${normalized}` : "";
+    }
+
+    let callingCode: string;
+    try {
+      callingCode = getCountryCallingCode(countryCode as CountryCode);
+    } catch {
+      return normalized.startsWith("+") ? normalized : normalized ? `+${normalized}` : "";
+    }
+
+    if (!normalized) {
+      return `+${callingCode}`;
+    }
+
+    const digits = normalized.replace(/\D/g, "");
+    let subscriberDigits = digits;
+
+    if (previousCountryCode) {
+      try {
+        const previousCallingCode = getCountryCallingCode(
+          previousCountryCode as CountryCode
+        );
+        if (subscriberDigits.startsWith(previousCallingCode)) {
+          subscriberDigits = subscriberDigits.slice(previousCallingCode.length);
+        }
+      } catch {
+        // ignore and continue
+      }
+    }
+
+    if (subscriberDigits.startsWith(callingCode)) {
+      subscriberDigits = subscriberDigits.slice(callingCode.length);
+    } else if (subscriberDigits.startsWith("0")) {
+      subscriberDigits = subscriberDigits.slice(1);
+    }
+
+    return `+${callingCode}${subscriberDigits}`;
+  };
 
   const countryOptions = useMemo(() => {
     const countries = Country.getAllCountries();
@@ -223,6 +342,19 @@ export default function Register() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [selectedCheckpointCountry, selectedCheckpointState]);
 
+  const phonePlaceholder = useMemo(() => {
+    if (!form.countryOfIncorporation) {
+      return "+ Country Code";
+    }
+
+    try {
+      const code = getCountryCallingCode(form.countryOfIncorporation as CountryCode);
+      return `+${code}`;
+    } catch {
+      return "+ Country Code";
+    }
+  }, [form.countryOfIncorporation]);
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -240,10 +372,52 @@ export default function Register() {
       setForm((prev) => ({ ...prev, [name]: value }));
 
       if (!isValidEmail && !emailErrorShown) {
-        toast.error("Please enter a sssssssssssssssvalid email address.");
+        toast.error("Please enter a valid email address.");
         setEmailErrorShown(true);
       } else if (isValidEmail && emailErrorShown) {
         setEmailErrorShown(false);
+      }
+
+      return;
+    }
+
+    if (name === "phone") {
+      if (!value.trim()) {
+        if (phoneErrorShown) {
+          setPhoneErrorShown(false);
+        }
+        setForm((prev) => ({ ...prev, phone: "" }));
+        return;
+      }
+
+      const countryCode = form.countryOfIncorporation;
+      const normalized = normalizePhoneNumber(value);
+      const formatted = countryCode
+        ? formatPhoneForCountry(normalized, countryCode)
+        : normalized.startsWith("+")
+          ? normalized
+          : `+${normalized}`;
+
+      setForm((prev) => ({ ...prev, phone: formatted }));
+
+      const shouldValidate = countryCode
+        ? hasSubscriberDigits(formatted, countryCode)
+        : Boolean(formatted.length);
+
+      if (!shouldValidate) {
+        if (phoneErrorShown) {
+          setPhoneErrorShown(false);
+        }
+        return;
+      }
+
+      const isValidPhone = validatePhoneForCountry(formatted, countryCode);
+
+      if (!isValidPhone && !phoneErrorShown) {
+        toast.error("Please enter a valid phone number for the selected country.");
+        setPhoneErrorShown(true);
+      } else if (isValidPhone && phoneErrorShown) {
+        setPhoneErrorShown(false);
       }
 
       return;
@@ -255,10 +429,50 @@ export default function Register() {
   const handleCountryOfIncorporationSelect = (
     option: SearchableSelectOption | null
   ) => {
+    const nextCountry = option?.value ?? "";
+    const previousCountry = form.countryOfIncorporation;
+    let nextPhone = form.phone;
+
+    if (nextCountry) {
+      nextPhone = form.phone.trim()
+        ? formatPhoneForCountry(form.phone, nextCountry, previousCountry || undefined)
+        : (() => {
+            try {
+              return `+${getCountryCallingCode(nextCountry as CountryCode)}`;
+            } catch {
+              return "";
+            }
+          })();
+    }
+
     setForm((prev) => ({
       ...prev,
-      countryOfIncorporation: option?.value ?? "",
+      countryOfIncorporation: nextCountry,
+      phone: nextPhone,
     }));
+
+    if (!nextCountry || !nextPhone.trim()) {
+      if (phoneErrorShown) {
+        setPhoneErrorShown(false);
+      }
+      return;
+    }
+
+    if (!hasSubscriberDigits(nextPhone, nextCountry)) {
+      if (phoneErrorShown) {
+        setPhoneErrorShown(false);
+      }
+      return;
+    }
+
+    const isValidPhone = validatePhoneForCountry(nextPhone, nextCountry);
+
+    if (!isValidPhone && !phoneErrorShown) {
+      toast.error("Please enter a valid phone number for the selected country.");
+      setPhoneErrorShown(true);
+    } else if (isValidPhone && phoneErrorShown) {
+      setPhoneErrorShown(false);
+    }
   };
 
   const handleCheckpointCountrySelect = (
@@ -308,7 +522,7 @@ export default function Register() {
       return;
     }
 
-    if (!form.email.includes("@")) {
+    if (!emailPattern.test(form.email.trim())) {
       toast.error("Please enter a valid email address.");
       return;
     }
@@ -320,6 +534,18 @@ export default function Register() {
 
     if (form.countryOfIncorporation.length < 2) {
       toast.error("Country code must be at least 2 characters (e.g., US).");
+      return;
+    }
+
+    if (!form.phone.trim()) {
+      toast.error("Please enter a phone number.");
+      return;
+    }
+
+    if (
+      !validatePhoneForCountry(form.phone, form.countryOfIncorporation)
+    ) {
+      toast.error("Please enter a valid phone number for the selected country.");
       return;
     }
 
@@ -547,6 +773,7 @@ export default function Register() {
                   value={form.businessRegNo}
                   onChange={handleChange}
                   placeholder="REG-12345"
+                  maxLength={9}
                   required
                 />
               </div>
@@ -615,7 +842,7 @@ export default function Register() {
                   name="phone"
                   value={form.phone}
                   onChange={handleChange}
-                  placeholder="+1-555-123-0000"
+                  placeholder={phonePlaceholder}
                   required
                 />
               </div>
