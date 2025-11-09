@@ -568,290 +568,363 @@ const Settings = () => {
           if (!open) handleCloseProfileDialog();
         }}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Edit Registration Details</DialogTitle>
+            <DialogTitle>Edit Registration Profile</DialogTitle>
             <DialogDescription>
-              Refresh your organization profile, contact information, and checkpoint details. These updates sync with the registry.
+              Update your organization information. Changes are saved to the registry.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-8 py-2">
-            <section className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Organization
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Basic company identifiers used across the network.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-type">Registration Type</Label>
-                  <Input
-                    id="edit-type"
-                    value={editableRegistration.type}
-                    onChange={(event) => setEditableRegistration((prev) => ({ ...prev, type: event.target.value }))}
-                    placeholder="MANUFACTURER"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-legal-name">Legal Name</Label>
-                  <Input
-                    id="edit-legal-name"
-                    value={editableRegistration.identification.legalName}
-                    onChange={(event) => updateIdentificationField('legalName', event.target.value)}
-                    placeholder="Acme Manufacturing"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-business-reg">Business Registration Number</Label>
-                  <Input
-                    id="edit-business-reg"
-                    value={editableRegistration.identification.businessRegNo}
-                    onChange={(event) => updateIdentificationField('businessRegNo', event.target.value)}
-                    placeholder="REG-12345"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-country">Country of Incorporation</Label>
-                  <Input
-                    id="edit-country"
-                    value={editableRegistration.identification.countryOfIncorporation}
-                    onChange={(event) => updateIdentificationField('countryOfIncorporation', event.target.value)}
-                    placeholder="LK"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-identification-public-key">Registration Public Key</Label>
-                  <Input
-                    id="edit-identification-public-key"
-                    value={editableRegistration.identification.publicKey}
-                    onChange={(event) => updateIdentificationField('publicKey', event.target.value)}
-                    placeholder="0x..."
-                  />
-                </div>
-              </div>
-            </section>
+          
+          <div className="overflow-y-auto max-h-[calc(85vh-180px)] px-1">
+            <div className="space-y-6 py-2">
+              {/* Essential Information Card */}
+              <Card className="border-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Essential Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-legal-name" className="text-sm font-medium">
+                        Organization Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="edit-legal-name"
+                        value={editableRegistration.identification.legalName}
+                        onChange={(event) => updateIdentificationField('legalName', event.target.value)}
+                        placeholder="Acme Manufacturing Ltd."
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-type" className="text-sm font-medium">
+                        Registration Type <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="edit-type"
+                        value={editableRegistration.type}
+                        onChange={(event) => setEditableRegistration((prev) => ({ ...prev, type: event.target.value }))}
+                        placeholder="MANUFACTURER"
+                        className="h-10"
+                      />
+                      <p className="text-xs text-muted-foreground">e.g., MANUFACTURER, DISTRIBUTOR, RETAILER</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-contact-name" className="text-sm font-medium">
+                        Contact Person <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="edit-contact-name"
+                        value={editableRegistration.contact.personName}
+                        onChange={(event) => updateContactField('personName', event.target.value)}
+                        placeholder="Jane Doe"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-email" className="text-sm font-medium">
+                        Email Address <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        value={editableRegistration.contact.email}
+                        onChange={(event) => updateContactField('email', event.target.value)}
+                        placeholder="jane.doe@company.com"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-phone" className="text-sm font-medium">
+                        Phone Number
+                      </Label>
+                      <Input
+                        id="edit-phone"
+                        value={editableRegistration.contact.phone}
+                        onChange={(event) => updateContactField('phone', event.target.value)}
+                        placeholder="+94 77 123 4567"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-designation" className="text-sm font-medium">
+                        Job Title
+                      </Label>
+                      <Input
+                        id="edit-designation"
+                        value={editableRegistration.contact.designation}
+                        onChange={(event) => updateContactField('designation', event.target.value)}
+                        placeholder="Supply Chain Director"
+                        className="h-10"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Separator />
+              {/* Company Details Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <SettingsIcon className="h-4 w-4" />
+                    Company Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-business-reg" className="text-sm font-medium">
+                        Registration Number
+                      </Label>
+                      <Input
+                        id="edit-business-reg"
+                        value={editableRegistration.identification.businessRegNo}
+                        onChange={(event) => updateIdentificationField('businessRegNo', event.target.value)}
+                        placeholder="REG-2024-12345"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-country" className="text-sm font-medium">
+                        Country
+                      </Label>
+                      <Input
+                        id="edit-country"
+                        value={editableRegistration.identification.countryOfIncorporation}
+                        onChange={(event) => updateIdentificationField('countryOfIncorporation', event.target.value)}
+                        placeholder="Sri Lanka"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="edit-address" className="text-sm font-medium">
+                        Business Address
+                      </Label>
+                      <Textarea
+                        id="edit-address"
+                        value={editableRegistration.contact.address}
+                        onChange={(event) => updateContactField('address', event.target.value)}
+                        placeholder="123 Industrial Park, Colombo 03"
+                        rows={2}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <section className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Contact Information
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Keep these details current so partners can reach the right person.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-contact-name">Contact Person</Label>
-                  <Input
-                    id="edit-contact-name"
-                    value={editableRegistration.contact.personName}
-                    onChange={(event) => updateContactField('personName', event.target.value)}
-                    placeholder="Jane Doe"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-designation">Designation</Label>
-                  <Input
-                    id="edit-designation"
-                    value={editableRegistration.contact.designation}
-                    onChange={(event) => updateContactField('designation', event.target.value)}
-                    placeholder="Director"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email</Label>
-                  <Input
-                    id="edit-email"
-                    type="email"
-                    value={editableRegistration.contact.email}
-                    onChange={(event) => updateContactField('email', event.target.value)}
-                    placeholder="jane@company.example"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-phone">Phone</Label>
-                  <Input
-                    id="edit-phone"
-                    value={editableRegistration.contact.phone}
-                    onChange={(event) => updateContactField('phone', event.target.value)}
-                    placeholder="+1-555-123-0000"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-address">Address</Label>
-                  <Textarea
-                    id="edit-address"
-                    value={editableRegistration.contact.address}
-                    onChange={(event) => updateContactField('address', event.target.value)}
-                    placeholder="123 Industry Way, Springfield"
-                  />
-                </div>
-              </div>
-            </section>
+              {/* Products & Certifications Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Products & Certifications</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-product-categories" className="text-sm font-medium">
+                        Product Categories
+                      </Label>
+                      <Textarea
+                        id="edit-product-categories"
+                        value={listToTextareaValue(editableRegistration.details.productCategoriesManufactured)}
+                        onChange={(event) =>
+                          updateDetailsField('productCategoriesManufactured', textareaValueToList(event.target.value))
+                        }
+                        placeholder="Vaccines&#10;Medical Devices&#10;Pharmaceuticals"
+                        rows={4}
+                        className="resize-none font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">One category per line</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-certifications" className="text-sm font-medium">
+                        Certifications
+                      </Label>
+                      <Textarea
+                        id="edit-certifications"
+                        value={listToTextareaValue(editableRegistration.details.certifications)}
+                        onChange={(event) => updateDetailsField('certifications', textareaValueToList(event.target.value))}
+                        placeholder="ISO 9001:2015&#10;GMP Certified&#10;WHO Prequalified"
+                        rows={4}
+                        className="resize-none font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">One certification per line</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Separator />
+              {/* Checkpoint Location Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Facility Location</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="edit-checkpoint-name" className="text-sm font-medium">
+                        Facility Name
+                      </Label>
+                      <Input
+                        id="edit-checkpoint-name"
+                        value={editableRegistration.checkpoint.name}
+                        onChange={(event) => updateCheckpointField('name', event.target.value)}
+                        placeholder="Colombo Main Facility"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="edit-checkpoint-address" className="text-sm font-medium">
+                        Street Address
+                      </Label>
+                      <Textarea
+                        id="edit-checkpoint-address"
+                        value={editableRegistration.checkpoint.address}
+                        onChange={(event) => updateCheckpointField('address', event.target.value)}
+                        placeholder="456 Factory Road, Industrial Zone"
+                        rows={2}
+                        className="resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-checkpoint-state" className="text-sm font-medium">
+                        State / Province
+                      </Label>
+                      <Input
+                        id="edit-checkpoint-state"
+                        value={editableRegistration.checkpoint.state}
+                        onChange={(event) => updateCheckpointField('state', event.target.value)}
+                        placeholder="Western Province"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-checkpoint-country" className="text-sm font-medium">
+                        Country
+                      </Label>
+                      <Input
+                        id="edit-checkpoint-country"
+                        value={editableRegistration.checkpoint.country}
+                        onChange={(event) => updateCheckpointField('country', event.target.value)}
+                        placeholder="Sri Lanka"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-checkpoint-latitude" className="text-sm font-medium">
+                        Latitude
+                      </Label>
+                      <Input
+                        id="edit-checkpoint-latitude"
+                        value={editableRegistration.checkpoint.latitude}
+                        onChange={(event) => updateCheckpointField('latitude', event.target.value)}
+                        placeholder="6.9271"
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-checkpoint-longitude" className="text-sm font-medium">
+                        Longitude
+                      </Label>
+                      <Input
+                        id="edit-checkpoint-longitude"
+                        value={editableRegistration.checkpoint.longitude}
+                        onChange={(event) => updateCheckpointField('longitude', event.target.value)}
+                        placeholder="79.8612"
+                        className="h-10"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <section className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Additional Details
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Share the products you handle and relevant certifications. Enter one item per line.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-product-categories">Product Categories Manufactured</Label>
-                  <Textarea
-                    id="edit-product-categories"
-                    value={listToTextareaValue(editableRegistration.details.productCategoriesManufactured)}
-                    onChange={(event) =>
-                      updateDetailsField('productCategoriesManufactured', textareaValueToList(event.target.value))
-                    }
-                    placeholder={'Vaccine\nMedical Devices'}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-certifications">Certifications</Label>
-                  <Textarea
-                    id="edit-certifications"
-                    value={listToTextareaValue(editableRegistration.details.certifications)}
-                    onChange={(event) => updateDetailsField('certifications', textareaValueToList(event.target.value))}
-                    placeholder={'ISO9001\nGMP'}
-                  />
-                </div>
-              </div>
-            </section>
-
-            <Separator />
-
-            <section className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Checkpoint
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Where handovers occur or goods are manufactured.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-checkpoint-name">Checkpoint Name</Label>
-                  <Input
-                    id="edit-checkpoint-name"
-                    value={editableRegistration.checkpoint.name}
-                    onChange={(event) => updateCheckpointField('name', event.target.value)}
-                    placeholder="Colombo Facility"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-checkpoint-address">Address</Label>
-                  <Textarea
-                    id="edit-checkpoint-address"
-                    value={editableRegistration.checkpoint.address}
-                    onChange={(event) => updateCheckpointField('address', event.target.value)}
-                    placeholder="Colombo"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-checkpoint-state">State / Province</Label>
-                  <Input
-                    id="edit-checkpoint-state"
-                    value={editableRegistration.checkpoint.state}
-                    onChange={(event) => updateCheckpointField('state', event.target.value)}
-                    placeholder="Colombo District"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-checkpoint-country">Country</Label>
-                  <Input
-                    id="edit-checkpoint-country"
-                    value={editableRegistration.checkpoint.country}
-                    onChange={(event) => updateCheckpointField('country', event.target.value)}
-                    placeholder="Sri Lanka"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-checkpoint-latitude">Latitude</Label>
-                  <Input
-                    id="edit-checkpoint-latitude"
-                    value={editableRegistration.checkpoint.latitude}
-                    onChange={(event) => updateCheckpointField('latitude', event.target.value)}
-                    placeholder="4.56"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-checkpoint-longitude">Longitude</Label>
-                  <Input
-                    id="edit-checkpoint-longitude"
-                    value={editableRegistration.checkpoint.longitude}
-                    onChange={(event) => updateCheckpointField('longitude', event.target.value)}
-                    placeholder="52.255"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <Separator />
-
-            <section className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Metadata
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Contract-specific information synced with the blockchain layer.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="edit-metadata-public-key">Metadata Public Key</Label>
-                  <Input
-                    id="edit-metadata-public-key"
-                    value={editableRegistration.metadata.publicKey}
-                    onChange={(event) => updateMetadataField('publicKey', event.target.value)}
-                    placeholder="0x..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-smart-contract-role">Smart Contract Role</Label>
-                  <Input
-                    id="edit-smart-contract-role"
-                    value={editableRegistration.metadata.smartContractRole}
-                    onChange={(event) => updateMetadataField('smartContractRole', event.target.value)}
-                    placeholder="MANUFACTURER"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-date-of-registration">Date of Registration</Label>
-                  <Input
-                    id="edit-date-of-registration"
-                    type="date"
-                    value={editableRegistration.metadata.dateOfRegistration?.slice(0, 10) || ''}
-                    onChange={(event) => updateMetadataField('dateOfRegistration', event.target.value)}
-                  />
-                </div>
-              </div>
-            </section>
+              {/* Advanced: Blockchain Data Card */}
+              <Card className="border-dashed">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-muted-foreground">Advanced: Blockchain Data</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-identification-public-key" className="text-sm font-medium">
+                        Organization Public Key
+                      </Label>
+                      <Input
+                        id="edit-identification-public-key"
+                        value={editableRegistration.identification.publicKey}
+                        onChange={(event) => updateIdentificationField('publicKey', event.target.value)}
+                        placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+                        className="h-10 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-metadata-public-key" className="text-sm font-medium">
+                        Metadata Public Key
+                      </Label>
+                      <Input
+                        id="edit-metadata-public-key"
+                        value={editableRegistration.metadata.publicKey}
+                        onChange={(event) => updateMetadataField('publicKey', event.target.value)}
+                        placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+                        className="h-10 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-smart-contract-role" className="text-sm font-medium">
+                          Smart Contract Role
+                        </Label>
+                        <Input
+                          id="edit-smart-contract-role"
+                          value={editableRegistration.metadata.smartContractRole}
+                          onChange={(event) => updateMetadataField('smartContractRole', event.target.value)}
+                          placeholder="MANUFACTURER"
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-date-of-registration" className="text-sm font-medium">
+                          Registration Date
+                        </Label>
+                        <Input
+                          id="edit-date-of-registration"
+                          type="date"
+                          value={editableRegistration.metadata.dateOfRegistration?.slice(0, 10) || ''}
+                          onChange={(event) => updateMetadataField('dateOfRegistration', event.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleCloseProfileDialog} disabled={isProfileSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSaveRegistration} disabled={isProfileSaving}>
-              {isProfileSaving ? 'Saving…' : 'Save Changes'}
+            <Button onClick={handleSaveRegistration} disabled={isProfileSaving} className="gap-2">
+              {isProfileSaving ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
-    </div>
+      </Dialog>    </div>
   );
 };
 
