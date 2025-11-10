@@ -40,7 +40,6 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { handoverUtils, useHandoverSharedContext, useSupplierContext } from "../context";
@@ -301,11 +300,11 @@ export function SupplierSection() {
               )}
             </Button>
           );
-        }
+      }
       case "IN_TRANSIT":
         return (
           <Button size="sm" onClick={() => openHandoverDialog(shipment)}>
-            Prepare Handover
+            Handover
           </Button>
         );
       case "DELIVERED":
@@ -675,63 +674,57 @@ function SupplierHandoverDialog() {
   const supplier = useSupplierContext();
 
   if (!supplier.enabled) return null;
+  const coordsMissing =
+    supplier.handoverForm.latitude.trim().length === 0 ||
+    supplier.handoverForm.longitude.trim().length === 0;
 
   return (
     <Dialog open={supplier.handoverDialogOpen} onOpenChange={supplier.setHandoverDialogOpen}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Prepare handover</DialogTitle>
+          <DialogTitle>Handover shipment</DialogTitle>
           <DialogDescription>
-            Provide the receiving party and any checkpoint notes. Once confirmed the shipment will move to the next leg.
+            Provide the receiving party, checkpoint notes, and GPS coordinates to finalize this handover.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          <p className="text-sm text-muted-foreground">
+            This handover request only submits geographic coordinates. Enter the latitude and longitude of the handover
+            location.
+          </p>
           <div className="grid gap-2">
-            <label htmlFor="handoverToUUID" className="text-sm font-medium">
-              Receiving party UUID
+            <label htmlFor="handoverLatitude" className="text-sm font-medium">
+              Latitude
             </label>
             <Input
-              id="handoverToUUID"
-              placeholder="0x1234…abcd"
-              value={supplier.handoverForm.handoverToUUID}
+              id="handoverLatitude"
+              type="number"
+              step="any"
+              placeholder="e.g., 6.1248"
+              value={supplier.handoverForm.latitude}
               onChange={(event) =>
                 supplier.setHandoverForm((prev) => ({
                   ...prev,
-                  handoverToUUID: event.target.value,
+                  latitude: event.target.value,
                 }))
               }
             />
           </div>
           <div className="grid gap-2">
-            <label htmlFor="checkpointNote" className="text-sm font-medium">
-              Checkpoint / logistics note
-            </label>
-            <Textarea
-              id="checkpointNote"
-              rows={3}
-              placeholder="e.g., Handover scheduled at Central Logistics Hub, dock #4."
-              value={supplier.handoverForm.checkpointNote}
-              onChange={(event) =>
-                supplier.setHandoverForm((prev) => ({
-                  ...prev,
-                  checkpointNote: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="temperatureCheck" className="text-sm font-medium">
-              Temperature compliance check
+            <label htmlFor="handoverLongitude" className="text-sm font-medium">
+              Longitude
             </label>
             <Input
-              id="temperatureCheck"
-              placeholder="e.g., 4°C on departure"
-              value={supplier.handoverForm.temperatureCheck}
+              id="handoverLongitude"
+              type="number"
+              step="any"
+              placeholder="e.g., 81.1185"
+              value={supplier.handoverForm.longitude}
               onChange={(event) =>
                 supplier.setHandoverForm((prev) => ({
                   ...prev,
-                  temperatureCheck: event.target.value,
+                  longitude: event.target.value,
                 }))
               }
             />
@@ -742,7 +735,10 @@ function SupplierHandoverDialog() {
           <Button variant="ghost" onClick={() => supplier.setHandoverDialogOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={supplier.submitHandover} disabled={supplier.handoverLoading}>
+          <Button
+            onClick={supplier.submitHandover}
+            disabled={supplier.handoverLoading || coordsMissing}
+          >
             {supplier.handoverLoading ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />

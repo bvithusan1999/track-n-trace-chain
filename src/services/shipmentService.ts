@@ -94,4 +94,12 @@ export const shipmentService = {
     const res = await api.post(`/api/shipment-segments/takeover/${segmentId}`, coords);
     return res.data;
   },
+
+  async handover(
+    segmentId: string,
+    coords: { latitude: number; longitude: number },
+  ): Promise<any> {
+    const res = await api.post(`/api/shipment-segments/handover/${segmentId}`, coords);
+    return res.data;
+  },
 };

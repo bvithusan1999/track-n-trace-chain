@@ -468,9 +468,8 @@ export const HandoverProvider = ({ children }: { children: React.ReactNode }) =>
   const [handoverDialogOpen, setHandoverDialogOpen] = useState(false);
   const [handoverTarget, setHandoverTarget] = useState<SupplierShipmentRecord | null>(null);
   const [handoverForm, setHandoverFormState] = useState<HandoverFormState>({
-    handoverToUUID: "",
-    checkpointNote: "",
-    temperatureCheck: "",
+    latitude: "",
+    longitude: "",
   });
   const [handoverLoading, setHandoverLoading] = useState(false);
   const [takeoverSegmentId, setTakeoverSegmentId] = useState<string | null>(null);
@@ -662,21 +661,34 @@ export const HandoverProvider = ({ children }: { children: React.ReactNode }) =>
 
   const resetHandoverForm = useCallback(() => {
     setHandoverFormState({
-      handoverToUUID: "",
-      checkpointNote: "",
-      temperatureCheck: "",
+      latitude: "",
+      longitude: "",
     });
   }, []);
 
   const submitHandover = useCallback(async () => {
     if (!handoverTarget) {
+      toast.error("Select a segment to hand over.");
       return;
     }
+
+    const segmentIdentifier = handoverTarget.segmentId ?? handoverTarget.id;
+    if (!segmentIdentifier) {
+      toast.error("Unable to determine segment for handover.");
+      return;
+    }
+
+    const latitude = Number(handoverForm.latitude);
+    const longitude = Number(handoverForm.longitude);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      toast.error("Provide valid latitude and longitude coordinates.");
+      return;
+    }
+
     setHandoverLoading(true);
     try {
-      // TODO: replace with shipmentService.handover once API details are available.
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      toast.success("Handover details submitted.");
+      await shipmentService.handover(String(segmentIdentifier), { latitude, longitude });
+      toast.success("Handover completed.");
       setHandoverDialogOpen(false);
       setHandoverTarget(null);
       resetHandoverForm();
@@ -686,11 +698,18 @@ export const HandoverProvider = ({ children }: { children: React.ReactNode }) =>
       );
     } catch (error) {
       console.error(error);
-      toast.error("Failed to submit handover details.");
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { error?: string } } }).response?.data?.error === "string"
+          ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+          : undefined;
+      toast.error(message || "Failed to submit handover details.");
     } finally {
       setHandoverLoading(false);
     }
-  }, [handoverTarget, queryClient, resetHandoverForm, uuid]);
+  }, [handoverForm, handoverTarget, queryClient, resetHandoverForm, uuid]);
 
   const fallbackByStatus = useMemo<
     Partial<Record<SupplierShipmentStatus, SupplierShipmentRecord[]>>

@@ -83,9 +83,8 @@ export type ManufacturerShipmentRecord = {
 };
 
 export type HandoverFormState = {
-  handoverToUUID: string;
-  checkpointNote: string;
-  temperatureCheck: string;
+  latitude: string;
+  longitude: string;
 };
 
 export type BatchFormatter = (batch: ProductBatchSummary) => string | undefined;
