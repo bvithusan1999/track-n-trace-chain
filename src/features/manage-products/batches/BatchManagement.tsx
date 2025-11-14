@@ -375,9 +375,9 @@ export function BatchManagement() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Batches</h2>
-          <p className="text-sm text-muted-foreground">
+          {/* <p className="text-sm text-muted-foreground">
             Monitor production batches and connect them to downstream packages.
-          </p>
+          </p> */}
         </div>
         <Button
           onClick={() => {

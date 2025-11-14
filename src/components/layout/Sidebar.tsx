@@ -15,9 +15,13 @@ import {
   Warehouse,
   MapPin,
   UserPlus,
+  Archive,
+  Tag,
+  ChevronDown,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
 
 interface SidebarProps {
   className?: string;
@@ -34,6 +38,8 @@ export function Sidebar({
   const userRole = role ?? "GUEST"; // ✅ fallback for null
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // 🧭 Role-based navigation items
   const getNavigationItems = () => {
@@ -44,11 +50,33 @@ export function Sidebar({
       case "MANUFACTURER":
         return [
           { path: "/", label: "Dashboard", icon: LayoutDashboard },
-          // { path: "/products", label: "Products", icon: Package },
           {
-            path: "/products/create",
+            type: "group",
+            key: "manage-products",
             label: "Manage Products",
             icon: PlusCircle,
+            children: [
+              {
+                path: "/products/create?tab=packages",
+                label: "Packages",
+                icon: Package,
+              },
+              {
+                path: "/products/create?tab=batches",
+                label: "Batches",
+                icon: Archive,
+              },
+              {
+                path: "/products/create?tab=products",
+                label: "Products",
+                icon: Package,
+              },
+              {
+                path: "/products/create?tab=categories",
+                label: "Product Categories",
+                icon: Tag,
+              },
+            ],
           },
           { path: "/qr-scan", label: "QR Scanner", icon: QrCode },
           // { path: "/checkpoints", label: "Checkpoints", icon: MapPin },
@@ -132,27 +160,99 @@ export function Sidebar({
       {/* Main Scrollable Section */}
       <div className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
         {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive =
-            location.pathname === item.path ||
-            location.pathname.startsWith(item.path + "/");
+          if (item.type === "group") {
+            const isExpanded = expandedItems.has(item.key);
+            const hasActiveChild = item.children.some((child) => {
+              const [path, query] = child.path.split("?");
+              const tab = query.split("=")[1];
+              return (
+                location.pathname === path && searchParams.get("tab") === tab
+              );
+            });
+            return (
+              <div key={item.key}>
+                <Button
+                  onClick={() => {
+                    setExpandedItems((prev) => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(item.key)) newSet.delete(item.key);
+                      else newSet.add(item.key);
+                      return newSet;
+                    });
+                    navigate(item.children[0].path);
+                  }}
+                  variant={hasActiveChild ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-3 h-11 transition-all duration-200",
+                    hasActiveChild
+                      ? "bg-primary/10 text-primary border border-primary/20 glow-primary"
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                >
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                  {!collapsed && (
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 ml-auto transition-transform",
+                        isExpanded ? "rotate-180" : ""
+                      )}
+                    />
+                  )}
+                </Button>
+                {isExpanded && !collapsed && (
+                  <div className="ml-4 space-y-1">
+                    {item.children.map((child) => {
+                      const Icon = child.icon;
+                      const [path, query] = child.path.split("?");
+                      const tab = query.split("=")[1];
+                      const isActive =
+                        location.pathname === path &&
+                        searchParams.get("tab") === tab;
+                      return (
+                        <Button
+                          key={child.path}
+                          onClick={() => navigate(child.path)}
+                          variant={isActive ? "secondary" : "ghost"}
+                          className={cn(
+                            "w-full justify-start gap-3 h-10 transition-all duration-200",
+                            isActive
+                              ? "bg-primary/10 text-primary border border-primary/20 glow-primary"
+                              : "text-muted-foreground hover:text-primary"
+                          )}
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{child.label}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          } else {
+            const Icon = item.icon;
+            const isActive =
+              location.pathname === item.path ||
+              location.pathname.startsWith(item.path + "/");
 
-          return (
-            <Button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              variant={isActive ? "secondary" : "ghost"}
-              className={cn(
-                "w-full justify-start gap-3 h-11 transition-all duration-200",
-                isActive
-                  ? "bg-primary/10 text-primary border border-primary/20 glow-primary"
-                  : "text-muted-foreground hover:text-primary"
-              )}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Button>
-          );
+            return (
+              <Button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                variant={isActive ? "secondary" : "ghost"}
+                className={cn(
+                  "w-full justify-start gap-3 h-11 transition-all duration-200",
+                  isActive
+                    ? "bg-primary/10 text-primary border border-primary/20 glow-primary"
+                    : "text-muted-foreground hover:text-primary"
+                )}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Button>
+            );
+          }
         })}
       </div>
 
