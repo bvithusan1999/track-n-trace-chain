@@ -31,6 +31,11 @@ export const registrationService = {
         return res.data;
     },
 
+    async update(registrationId: string, payload: unknown) {
+        const res = await api.put(`/api/registrations/${registrationId}`, payload);
+        return res.data;
+    },
+
     async approve(registrationId: string) {
         const res = await api.patch(`/api/registrations/${registrationId}/approve`);
         return res.data;
