@@ -1,14 +1,54 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, PlusCircle } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  Plus,
+  PlusCircle,
+  X,
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   packageService,
   type PackageRegistryPayload,
@@ -16,22 +56,25 @@ import {
   type UpdatePackagePayload,
 } from "@/services/packageService";
 import { batchService } from "@/services/batchService";
+import {
+  sensorTypeService,
+  type SensorType,
+} from "@/services/sensorTypeService";
 import type { ProductBatchSummary } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 type PackageFormState = {
   batchId: string;
-  quantity: string;
   microprocessorMac: string;
-  sensorTypes: string;
+  sensorTypes: string[];
 };
 
 const emptyPackageForm = (): PackageFormState => ({
   batchId: "",
-  quantity: "",
   microprocessorMac: "",
-  sensorTypes: "",
+  sensorTypes: [],
 });
 
 const formatDateTime = (value?: string) => {
@@ -41,18 +84,34 @@ const formatDateTime = (value?: string) => {
   return date.toLocaleString();
 };
 
-const parseSensors = (value: string) =>
-  value
-    .split(",")
-    .map((sensor) => sensor.trim())
-    .filter(Boolean);
+const normalizeSensorArray = (value?: string[] | string | null) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((sensor) => (typeof sensor === "string" ? sensor.trim() : ""))
+      .filter((sensor) => sensor.length > 0);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((sensor) => sensor.trim())
+      .filter((sensor) => sensor.length > 0);
+  }
+  return [];
+};
 
 const sensorsToLabel = (sensors?: string[] | string) => {
   if (!sensors) return "Not specified";
   if (Array.isArray(sensors)) {
     return sensors.length ? sensors.join(", ") : "Not specified";
   }
-  return sensors.split(",").map((item) => item.trim()).filter(Boolean).join(", ") || "Not specified";
+  return (
+    sensors
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(", ") || "Not specified"
+  );
 };
 
 const formatHash = (value?: string | null) => {
@@ -61,6 +120,180 @@ const formatHash = (value?: string | null) => {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
 };
 
+const productionTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const toProductionLabel = (value?: string | null) => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return productionTimeFormatter.format(date);
+};
+
+const deriveBatchProductionWindow = (batch: ProductBatchSummary) => {
+  const start = toProductionLabel(
+    batch.productionStartTime ?? batch.productionStart
+  );
+  const end = toProductionLabel(batch.productionEndTime ?? batch.productionEnd);
+
+  let detail: string | undefined;
+  if (start && end) {
+    detail = `${start} – ${end}`;
+  } else if (start) {
+    detail = start;
+  } else if (end) {
+    detail = end;
+  } else {
+    detail =
+      typeof batch.productionWindow === "string" &&
+      batch.productionWindow.trim().length > 0
+        ? batch.productionWindow.trim()
+        : batch.batchCode ?? undefined;
+  }
+
+  const fallback = `Batch ${batch.id ?? ""}`.trim();
+  const baseLabel = detail ?? fallback;
+
+  if (baseLabel.toLowerCase().startsWith("batch")) {
+    return baseLabel;
+  }
+
+  return `Batch - ${baseLabel}`;
+};
+
+type SensorTypeSelectorProps = {
+  selected: string[];
+  onChange: (next: string[]) => void;
+  options: SensorType[];
+  disabled?: boolean;
+  loading?: boolean;
+  error?: boolean;
+  placeholder?: string;
+  onCreateSensorType?: () => void;
+};
+
+function SensorTypeSelector({
+  selected,
+  onChange,
+  options,
+  disabled,
+  loading,
+  error,
+  placeholder = "Select sensor types",
+  onCreateSensorType,
+}: SensorTypeSelectorProps) {
+  const [open, setOpen] = useState(false);
+
+  const toggleSensor = (name: string) => {
+    onChange(
+      selected.includes(name)
+        ? selected.filter((sensor) => sensor !== name)
+        : [...selected, name]
+    );
+  };
+
+  const selectionLabel = selected.length
+    ? `${selected.length} sensor${selected.length > 1 ? "s" : ""} selected`
+    : placeholder;
+
+  return (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn("w-full justify-between", disabled && "opacity-50")}
+            disabled={disabled}
+          >
+            <span className="truncate">{selectionLabel}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search sensor types..." />
+            <CommandList>
+              <CommandEmpty>
+                {loading
+                  ? "Loading sensor types..."
+                  : error
+                  ? "Failed to load sensor types"
+                  : "No sensor types found"}
+              </CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = selected.includes(option.name);
+                  return (
+                    <CommandItem
+                      key={option.id}
+                      value={option.name}
+                      onSelect={() => toggleSensor(option.name)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          isSelected ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.name}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+            {onCreateSensorType ? (
+              <>
+                <CommandSeparator />
+                <div className="p-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setOpen(false);
+                      onCreateSensorType();
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add sensor type
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {selected.length > 0 ? (
+        <div className="flex flex-wrap gap-2 pt-2">
+          {selected.map((sensor) => (
+            <Badge
+              key={sensor}
+              variant="secondary"
+              className="flex items-center gap-1"
+            >
+              {sensor}
+              <button
+                type="button"
+                onClick={() => toggleSensor(sensor)}
+                className="rounded-full p-0.5 hover:text-destructive"
+                aria-label={`Remove ${sensor}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function PackageManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -68,12 +301,23 @@ export function PackageManagement() {
   const manufacturerUUID = uuid ?? "";
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<PackageFormState>(emptyPackageForm());
+  const [createForm, setCreateForm] = useState<PackageFormState>(
+    emptyPackageForm()
+  );
 
-  const [editingPackage, setEditingPackage] = useState<PackageResponse | null>(null);
+  const [editingPackage, setEditingPackage] = useState<PackageResponse | null>(
+    null
+  );
   const [editForm, setEditForm] = useState<UpdatePackagePayload>({});
 
-  const [viewingPackage, setViewingPackage] = useState<PackageResponse | null>(null);
+  const [viewingPackage, setViewingPackage] = useState<PackageResponse | null>(
+    null
+  );
+  const [isSensorTypeDialogOpen, setIsSensorTypeDialogOpen] = useState(false);
+  const [sensorTypeDialogContext, setSensorTypeDialogContext] = useState<
+    "create" | "edit"
+  >("create");
+  const [newSensorTypeName, setNewSensorTypeName] = useState("");
 
   const {
     data: packages = [],
@@ -97,21 +341,99 @@ export function PackageManagement() {
     enabled: Boolean(manufacturerUUID),
   });
 
+  const {
+    data: sensorTypes = [],
+    isLoading: loadingSensorTypes,
+    isError: sensorTypesError,
+    error: sensorTypesErrorDetails,
+  } = useQuery<SensorType[]>({
+    queryKey: ["sensor-types", manufacturerUUID],
+    queryFn: () => sensorTypeService.list(),
+    enabled: Boolean(manufacturerUUID),
+  });
+
+  const createSensorTypeMutation = useMutation({
+    mutationFn: (payload: { name: string }) =>
+      sensorTypeService.create(payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["sensor-types", manufacturerUUID],
+      });
+      setIsSensorTypeDialogOpen(false);
+      setNewSensorTypeName("");
+      toast({
+        title: "Sensor type created",
+        description: `${data.name} is now available.`,
+      });
+
+      if (sensorTypeDialogContext === "create") {
+        setCreateForm((current) => ({
+          ...current,
+          sensorTypes: Array.from(new Set([...current.sensorTypes, data.name])),
+        }));
+      } else {
+        setEditForm((current) => ({
+          ...current,
+          sensorTypes: Array.from(
+            new Set([...normalizeSensorArray(current.sensorTypes), data.name])
+          ),
+        }));
+      }
+    },
+    onError: (err: unknown) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to create sensor type",
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    },
+  });
+
   const batchOptions = useMemo(
     () =>
       batches.map((batch) => ({
         value: String(batch.id),
-        label: batch.batchCode || `Batch ${batch.id}`,
+        label: deriveBatchProductionWindow(batch),
       })),
-    [batches],
+    [batches]
   );
 
-  const batchLookup = useMemo(() => new Map(batches.map((batch) => [String(batch.id), batch])), [batches]);
+  const batchLookup = useMemo(
+    () => new Map(batches.map((batch) => [String(batch.id), batch])),
+    [batches]
+  );
+  const editSensorSelections = normalizeSensorArray(editForm.sensorTypes);
+  const sensorTypeErrorMessage =
+    sensorTypesErrorDetails instanceof Error
+      ? sensorTypesErrorDetails.message
+      : "Unable to load sensor types.";
+
+  const openSensorTypeDialog = (context: "create" | "edit") => {
+    setSensorTypeDialogContext(context);
+    setIsSensorTypeDialogOpen(true);
+  };
+
+  const handleSensorTypeSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = newSensorTypeName.trim();
+    if (!trimmed) {
+      toast({
+        variant: "destructive",
+        title: "Name required",
+        description: "Enter a sensor type name.",
+      });
+      return;
+    }
+    createSensorTypeMutation.mutate({ name: trimmed });
+  };
 
   const createMutation = useMutation({
-    mutationFn: (payload: PackageRegistryPayload) => packageService.register(payload),
+    mutationFn: (payload: PackageRegistryPayload) =>
+      packageService.register(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages", manufacturerUUID] });
+      queryClient.invalidateQueries({
+        queryKey: ["packages", manufacturerUUID],
+      });
       setIsCreateDialogOpen(false);
       setCreateForm(emptyPackageForm());
       toast({
@@ -129,9 +451,12 @@ export function PackageManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (payload: { id: string; data: UpdatePackagePayload }) => packageService.update(payload.id, payload.data),
+    mutationFn: (payload: { id: string; data: UpdatePackagePayload }) =>
+      packageService.update(payload.id, payload.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["packages", manufacturerUUID] });
+      queryClient.invalidateQueries({
+        queryKey: ["packages", manufacturerUUID],
+      });
       setEditingPackage(null);
       setEditForm({});
       toast({
@@ -166,19 +491,11 @@ export function PackageManagement() {
       });
       return;
     }
-    if (!createForm.quantity) {
-      toast({
-        variant: "destructive",
-        title: "Quantity required",
-      });
-      return;
-    }
     createMutation.mutate({
       manufacturerUUID,
       batchId: createForm.batchId,
-      quantity: Number(createForm.quantity),
       microprocessorMac: createForm.microprocessorMac.trim(),
-      sensorTypes: parseSensors(createForm.sensorTypes),
+      sensorTypes: createForm.sensorTypes,
     });
   };
 
@@ -195,31 +512,55 @@ export function PackageManagement() {
     if (!manufacturerUUID) {
       return (
         <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
-          Sign in as a manufacturer to view packages registered for your organisation.
+          Sign in as a manufacturer to view packages registered for your
+          organisation.
         </div>
       );
     }
 
     if (loadingPackages) {
       return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Card key={`package-skeleton-${index}`} className="border-border/50">
-              <CardHeader>
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-4 w-1/3" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-              <CardFooter className="justify-end gap-2">
-                <Skeleton className="h-9 w-20" />
-                <Skeleton className="h-9 w-20" />
-              </CardFooter>
-            </Card>
-          ))}
+        <div className="overflow-x-auto rounded-lg border border-border/60">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Package</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Sensors</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <TableRow key={`package-skeleton-${index}`}>
+                  <TableCell>
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="mt-2 h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-12" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-36" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-16" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       );
     }
@@ -227,7 +568,8 @@ export function PackageManagement() {
     if (packagesError) {
       return (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-          {(packagesErrorDetails as Error)?.message ?? "Unable to load packages right now."}
+          {(packagesErrorDetails as Error)?.message ??
+            "Unable to load packages right now."}
         </div>
       );
     }
@@ -241,73 +583,82 @@ export function PackageManagement() {
     }
 
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {packages.map((pkg) => {
-          const batchReference = pkg.batch ?? (pkg.batchId ? batchLookup.get(String(pkg.batchId)) ?? null : null);
-          const batchLabel =
-            batchReference?.batchCode ?? (pkg.batchId ? `Batch ${pkg.batchId}` : "No batch linked");
-          const productLabel =
-            batchReference?.product?.name ??
-            batchReference?.product?.productName ??
-            "Product not linked";
-          return (
-            <Card key={pkg.id} className="border-border/60 shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="block text-lg font-semibold">{pkg.packageCode || `Package ${pkg.id}`}</span>
-                    <p className="text-xs text-muted-foreground">Product: {productLabel}</p>
-                  </div>
-                  <Badge variant="outline">{batchLabel}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  <span className="text-foreground">Quantity:</span> {pkg.quantity ?? "N/A"}
-                </p>
-                <p>
-                  <span className="text-foreground">Available:</span> {pkg.quantityAvailable ?? "N/A"}
-                </p>
-                <p>
-                  <span className="text-foreground">Status:</span> {pkg.status ?? "Not specified"}
-                </p>
-                <p>
-                  <span className="text-foreground">Sensors:</span> {sensorsToLabel(pkg.sensorTypes)}
-                </p>
-                <p>
-                  <span className="text-foreground">Payload hash:</span> {formatHash(pkg.payloadHash)}
-                </p>
-                <p>
-                  <span className="text-foreground">Pinata CID:</span>{" "}
-                  {pkg.pinataCid ? formatHash(pkg.pinataCid) : "Not available"}
-                </p>
-                <p>
-                  <span className="text-foreground">Registered:</span> {formatDateTime(pkg.createdAt)}
-                </p>
-              </CardContent>
-              <CardFooter className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setViewingPackage(pkg)}>
-                  View
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setEditingPackage(pkg);
-                    setEditForm({
-                      packageCode: pkg.packageCode ?? "",
-                      quantity: pkg.quantity,
-                      status: pkg.status,
-                      notes: pkg.notes,
-                    });
-                  }}
-                >
-                  Edit
-                </Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
+      <div className="overflow-x-auto rounded-lg border border-border/60">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Package</TableHead>
+              {/* <TableHead>Batch</TableHead> */}
+              <TableHead>Quantity</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Sensors</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {packages.map((pkg) => {
+              const batchReference =
+                pkg.batch ??
+                (pkg.batchId
+                  ? batchLookup.get(String(pkg.batchId)) ?? null
+                  : null);
+              const batchLabel =
+                batchReference?.batchCode ??
+                (pkg.batchId ? `Batch ${pkg.batchId}` : "No batch linked");
+              const productLabel =
+                batchReference?.product?.name ??
+                batchReference?.product?.productName ??
+                "Product not linked";
+              return (
+                <TableRow key={pkg.id}>
+                  <TableCell>
+                    <div className="font-medium text-foreground">
+                      {pkg.packageCode || `Package ${pkg.id}`}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Product: {productLabel}
+                    </p>
+                  </TableCell>
+                  {/* <TableCell>{batchLabel}</TableCell> */}
+                  <TableCell>
+                    <div>
+                      <span className="text-foreground"></span>{" "}
+                      {pkg.quantity ?? "N/A"}
+                    </div>
+                  </TableCell>
+                  <TableCell>{pkg.status ?? "Not specified"}</TableCell>
+                  <TableCell>{sensorsToLabel(pkg.sensorTypes)}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setViewingPackage(pkg)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setEditingPackage(pkg);
+                          setEditForm({
+                            packageCode: pkg.packageCode ?? "",
+                            status: pkg.status,
+                            notes: pkg.notes,
+                            sensorTypes: normalizeSensorArray(pkg.sensorTypes),
+                          });
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
     );
   };
@@ -317,14 +668,17 @@ export function PackageManagement() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Packages</h2>
-          <p className="text-sm text-muted-foreground">
-            Register packages as they leave production and keep package metadata up to date.
-          </p>
+          {/* <p className="text-sm text-muted-foreground">
+            Register packages as they leave production and keep package metadata
+            up to date.
+          </p> */}
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
           className="gap-2"
-          disabled={!manufacturerUUID || loadingBatches || Boolean(batchesError)}
+          disabled={
+            !manufacturerUUID || loadingBatches || Boolean(batchesError)
+          }
         >
           <PlusCircle className="h-4 w-4" />
           Create Package
@@ -337,7 +691,9 @@ export function PackageManagement() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create Package</DialogTitle>
-            <DialogDescription>Link a new package to its production batch.</DialogDescription>
+            <DialogDescription>
+              Link a new package to its production batch.
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateSubmit}>
             <div className="space-y-2">
@@ -346,7 +702,9 @@ export function PackageManagement() {
               </label>
               <Select
                 value={createForm.batchId}
-                onValueChange={(value) => setCreateForm((current) => ({ ...current, batchId: value }))}
+                onValueChange={(value) =>
+                  setCreateForm((current) => ({ ...current, batchId: value }))
+                }
                 disabled={loadingBatches || batchesError}
                 required
               >
@@ -364,20 +722,6 @@ export function PackageManagement() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="package-quantity" className="text-sm font-medium">
-                Quantity
-              </label>
-              <Input
-                id="package-quantity"
-                type="number"
-                min={1}
-                value={createForm.quantity}
-                onChange={(event) => setCreateForm((current) => ({ ...current, quantity: event.target.value }))}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
               <label htmlFor="package-mac" className="text-sm font-medium">
                 Microprocessor MAC
               </label>
@@ -386,29 +730,53 @@ export function PackageManagement() {
                 placeholder="00:1A:2B:3C:4D:5E"
                 value={createForm.microprocessorMac}
                 onChange={(event) =>
-                  setCreateForm((current) => ({ ...current, microprocessorMac: event.target.value }))
+                  setCreateForm((current) => ({
+                    ...current,
+                    microprocessorMac: event.target.value,
+                  }))
                 }
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="package-sensors" className="text-sm font-medium">
-                Sensors <span className="text-muted-foreground">(comma separated)</span>
-              </label>
-              <Input
-                id="package-sensors"
-                placeholder="Temperature, Humidity"
-                value={createForm.sensorTypes}
-                onChange={(event) => setCreateForm((current) => ({ ...current, sensorTypes: event.target.value }))}
+              <label className="text-sm font-medium">Sensors</label>
+              <SensorTypeSelector
+                selected={createForm.sensorTypes}
+                onChange={(next) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    sensorTypes: next,
+                  }))
+                }
+                options={sensorTypes}
+                disabled={loadingSensorTypes || sensorTypesError}
+                loading={loadingSensorTypes}
+                error={sensorTypesError}
+                onCreateSensorType={() => openSensorTypeDialog("create")}
               />
+              {sensorTypesError ? (
+                <p className="text-sm text-destructive">
+                  {sensorTypeErrorMessage}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="gap-2" disabled={createMutation.isPending}>
-                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 Register package
               </Button>
             </div>
@@ -416,7 +784,10 @@ export function PackageManagement() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(editingPackage)} onOpenChange={(open) => (!open ? setEditingPackage(null) : null)}>
+      <Dialog
+        open={Boolean(editingPackage)}
+        onOpenChange={(open) => (!open ? setEditingPackage(null) : null)}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Package</DialogTitle>
@@ -424,62 +795,98 @@ export function PackageManagement() {
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleEditSubmit}>
             <div className="space-y-2">
-              <label htmlFor="edit-package-code" className="text-sm font-medium">
+              <label
+                htmlFor="edit-package-code"
+                className="text-sm font-medium"
+              >
                 Package code
               </label>
               <Input
                 id="edit-package-code"
                 value={editForm.packageCode ?? ""}
-                onChange={(event) => setEditForm((current) => ({ ...current, packageCode: event.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="edit-package-quantity" className="text-sm font-medium">
-                Quantity
-              </label>
-              <Input
-                id="edit-package-quantity"
-                type="number"
-                value={editForm.quantity ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value;
+                onChange={(event) =>
                   setEditForm((current) => ({
                     ...current,
-                    quantity: value ? Number(value) : undefined,
-                  }));
-                }}
+                    packageCode: event.target.value,
+                  }))
+                }
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="edit-package-status" className="text-sm font-medium">
+              <label
+                htmlFor="edit-package-status"
+                className="text-sm font-medium"
+              >
                 Status
               </label>
               <Input
                 id="edit-package-status"
                 value={editForm.status ?? ""}
-                onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value }))}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    status: event.target.value,
+                  }))
+                }
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="edit-package-notes" className="text-sm font-medium">
+              <label className="text-sm font-medium">Sensors</label>
+              <SensorTypeSelector
+                selected={editSensorSelections}
+                onChange={(next) =>
+                  setEditForm((current) => ({ ...current, sensorTypes: next }))
+                }
+                options={sensorTypes}
+                disabled={loadingSensorTypes || sensorTypesError}
+                loading={loadingSensorTypes}
+                error={sensorTypesError}
+                onCreateSensorType={() => openSensorTypeDialog("edit")}
+              />
+              {sensorTypesError ? (
+                <p className="text-sm text-destructive">
+                  {sensorTypeErrorMessage}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="edit-package-notes"
+                className="text-sm font-medium"
+              >
                 Notes
               </label>
               <Textarea
                 id="edit-package-notes"
                 value={editForm.notes ?? ""}
-                onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    notes: event.target.value,
+                  }))
+                }
               />
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setEditingPackage(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingPackage(null)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="gap-2" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 Save changes
               </Button>
             </div>
@@ -487,10 +894,67 @@ export function PackageManagement() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(viewingPackage)} onOpenChange={(open) => (!open ? setViewingPackage(null) : null)}>
+      <Dialog
+        open={isSensorTypeDialogOpen}
+        onOpenChange={setIsSensorTypeDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add sensor type</DialogTitle>
+            <DialogDescription>
+              Create a reusable sensor type for your organisation.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleSensorTypeSubmit}>
+            <div className="space-y-2">
+              <label htmlFor="new-sensor-type" className="text-sm font-medium">
+                Sensor type name
+              </label>
+              <Input
+                id="new-sensor-type"
+                autoFocus
+                placeholder="e.g., Humidity"
+                value={newSensorTypeName}
+                onChange={(event) => setNewSensorTypeName(event.target.value)}
+                disabled={createSensorTypeMutation.isPending}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsSensorTypeDialogOpen(false);
+                  setNewSensorTypeName("");
+                }}
+                disabled={createSensorTypeMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={createSensorTypeMutation.isPending}
+              >
+                {createSensorTypeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Save sensor type
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(viewingPackage)}
+        onOpenChange={(open) => (!open ? setViewingPackage(null) : null)}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{viewingPackage?.packageCode || `Package ${viewingPackage?.id}`}</DialogTitle>
+            <DialogTitle>
+              {viewingPackage?.packageCode || `Package ${viewingPackage?.id}`}
+            </DialogTitle>
             <DialogDescription>Package details</DialogDescription>
           </DialogHeader>
           {viewingPackage ? (
@@ -500,8 +964,8 @@ export function PackageManagement() {
                 <p className="text-foreground">
                   {viewingPackage.batch?.batchCode ??
                     (viewingPackage.batchId
-                      ? batchLookup.get(String(viewingPackage.batchId))?.batchCode ||
-                        `Batch ${viewingPackage.batchId}`
+                      ? batchLookup.get(String(viewingPackage.batchId))
+                          ?.batchCode || `Batch ${viewingPackage.batchId}`
                       : "Not linked")}
                 </p>
               </div>
@@ -511,60 +975,56 @@ export function PackageManagement() {
                   {viewingPackage.batch?.product?.name ??
                     viewingPackage.batch?.product?.productName ??
                     (viewingPackage.batchId
-                      ? batchLookup.get(String(viewingPackage.batchId))?.product?.productName ??
-                        batchLookup.get(String(viewingPackage.batchId))?.product?.name ??
+                      ? batchLookup.get(String(viewingPackage.batchId))?.product
+                          ?.productName ??
+                        batchLookup.get(String(viewingPackage.batchId))?.product
+                          ?.name ??
                         "Not linked"
                       : "Not linked")}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Quantity</p>
-                <p className="text-foreground">{viewingPackage.quantity ?? "N/A"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Quantity available</p>
-                <p className="text-foreground">{viewingPackage.quantityAvailable ?? "N/A"}</p>
+                <p className="text-foreground">
+                  {viewingPackage.quantity ?? "N/A"}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Status</p>
-                <p className="text-foreground">{viewingPackage.status ?? "Not specified"}</p>
+                <p className="text-foreground">
+                  {viewingPackage.status ?? "Not specified"}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Sensor types</p>
-                <p className="text-foreground">{sensorsToLabel(viewingPackage.sensorTypes)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Payload hash</p>
-                <p className="text-foreground">{viewingPackage.payloadHash ?? "Not available"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Transaction hash</p>
-                <p className="text-foreground">{viewingPackage.txHash ?? "Not available"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Pinata CID</p>
-                <p className="text-foreground break-all">{viewingPackage.pinataCid ?? "Not available"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Pinned at</p>
-                <p className="text-foreground">{formatDateTime(viewingPackage.pinataPinnedAt)}</p>
+                <p className="text-foreground">
+                  {sensorsToLabel(viewingPackage.sensorTypes)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Microprocessor MAC</p>
-                <p className="text-foreground">{viewingPackage.microprocessorMac ?? "Not provided"}</p>
+                <p className="text-foreground">
+                  {viewingPackage.microprocessorMac ?? "Not provided"}
+                </p>
               </div>
-              <div>
-                <p className="text-muted-foreground">Notes</p>
-                <p className="text-foreground">{viewingPackage.notes ?? "Not provided"}</p>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div>
-                  <p className="text-muted-foreground">Created</p>
-                  <p className="text-foreground">{formatDateTime(viewingPackage.createdAt)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Updated</p>
-                  <p className="text-foreground">{formatDateTime(viewingPackage.updatedAt)}</p>
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 sm:p-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Created at
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {formatDateTime(viewingPackage.createdAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Updated at
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {formatDateTime(viewingPackage.updatedAt)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
