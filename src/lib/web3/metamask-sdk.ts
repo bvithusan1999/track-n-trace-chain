@@ -30,24 +30,15 @@ export const getMetaMaskSDK = async () => {
       },
       // Force fresh connection each time
       shouldShimWeb3: false,
-      // Enable mobile deep linking
-      enableDebug: true,
       // Use deep linking for mobile browsers
       useDeeplink: true,
       // CRITICAL: Prefer deep link over other communication methods
       preferDesktop: false,
-      // Communication options
-      communicationLayerPreference: "socket",
       // Improve mobile experience
       checkInstallationImmediately: false,
       // CRITICAL: Force delete provider to prevent reusing cached connection
       forceDeleteProvider: true,
       forceInjectProvider: false,
-      // Ensure deep link opens for every request
-      modals: {
-        install: () => {},
-        otp: () => {},
-      },
       openDeeplink: (link: string) => {
         console.log("[MetaMask SDK] Opening deep link:", link);
         // Force open in same window to ensure it works on mobile
@@ -97,9 +88,10 @@ export const connectMetaMaskSDK = async () => {
 
       // CRITICAL: Delete any existing ethereum provider
       try {
-        if ((window as any).ethereum) {
+        const windowWithEth = window as Window & { ethereum?: unknown };
+        if (windowWithEth.ethereum) {
           console.log("[MetaMask SDK] Deleting cached ethereum provider");
-          delete (window as any).ethereum;
+          delete windowWithEth.ethereum;
         }
       } catch (e) {
         console.warn("[MetaMask SDK] Could not delete ethereum provider:", e);
