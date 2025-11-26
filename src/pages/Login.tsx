@@ -150,49 +150,75 @@ export default function LoginPage() {
     if (connectedAddress) {
       setWalletConnection(connectedAddress as `0x${string}`);
 
-      // Pre-fetch nonce silently to enable 1-click login
-      const prefetchNonce = async () => {
+      // CONTINUOUS FLOW: Automatically proceed to login after wallet connects
+      const autoLogin = async () => {
         try {
-          console.log("[Login] Pre-fetching nonce...");
+          console.log("[Login] Wallet connected, starting automatic login...");
+          setStep("fetching_nonce");
+          setStatus("Preparing secure login...");
+          setLoading(true);
+
+          // Fetch nonce
           const { data } = await api.get("/auth/nonce", {
             params: { address: connectedAddress },
           });
           setNonce(data.nonce);
-          console.log("[Login] Nonce pre-fetched");
+
+          // Immediately proceed to signing
+          setStep("signing");
+          setStatus("Please sign the message in your wallet...");
+
+          const message = `Registry Login\nAddress: ${connectedAddress.toLowerCase()}\nNonce: ${
+            data.nonce
+          }`;
+
+          const signature = await signMessageAsync({
+            account: connectedAddress,
+            message,
+          });
+
+          // Verify signature
+          setStep("verifying");
+          setStatus("Verifying signature...");
+
+          const loginResponse = await api.post("/auth/login", {
+            address: connectedAddress,
+            signature,
+          });
+
+          // Store JWT + role
+          setAuth({
+            token: loginResponse.data.accessToken,
+            refreshToken: loginResponse.data.refreshToken,
+            role: loginResponse.data.role,
+            address: loginResponse.data.address,
+            uuid: loginResponse.data.uuid,
+            expiresIn: loginResponse.data.expiresIn,
+          });
+
+          setStep("success");
+          setStatus("✅ Login successful! Redirecting...");
+          setTimeout(() => navigate("/"), 1000);
         } catch (err) {
-          console.error("[Login] Failed to pre-fetch nonce:", err);
-          // Ignore error, fallback to manual fetch on click
+          console.error("[Login] Auto-login failed:", err);
+          setStatus("Login failed. Please try again.");
+          setStep("error");
+          setLoading(false);
         }
       };
-      prefetchNonce();
+
+      autoLogin();
     } else {
       setWalletConnection(null);
       setNonce(null);
     }
   }, [connectedAddress, setWalletConnection]);
 
-  // Reset loading state when connected so user can click "Login"
-  useEffect(() => {
-    if (
-      isConnected &&
-      step !== "ready_to_sign" &&
-      step !== "signing" &&
-      step !== "verifying" &&
-      step !== "success"
-    ) {
-      setLoading(false);
-      setWalletConnecting(false);
-      setStatus("Wallet connected! Click 'Sign In' to verify ownership.");
-    }
-  }, [isConnected, step]);
-
   // Handle reconnecting state
   useEffect(() => {
     if (accountStatus === "reconnecting") {
       setLoading(true);
       setStatus("Restoring wallet connection...");
-    } else if (accountStatus === "connected" && !loading && step === "idle") {
-      setLoading(false);
     }
   }, [accountStatus]);
 
@@ -458,14 +484,59 @@ export default function LoginPage() {
         console.log("[MetaMask SDK] Connected:", address);
         setSdkAddress(address);
         setUsingSdk(true);
-        setStatus("Wallet connected! Preparing login...");
 
-        // Auto-fetch nonce
-        await initiateLogin(address as `0x${string}`);
+        // CONTINUOUS FLOW: Immediately fetch nonce and sign (no separate button click)
+        setStatus("Fetching nonce...");
+        setStep("fetching_nonce");
+
+        // Fetch nonce
+        const { data } = await api.get("/auth/nonce", {
+          params: { address },
+        });
+        const nonce = data.nonce;
+        setNonce(nonce);
+
+        // Immediately proceed to signing
+        setStep("signing");
+        setStatus("Please sign the message in MetaMask...");
+
+        const message = `Registry Login\nAddress: ${address.toLowerCase()}\nNonce: ${nonce}`;
+
+        console.log(
+          "[MetaMask SDK] Requesting signature - will open MetaMask app..."
+        );
+        const provider = await getMetaMaskProvider();
+        const signature = (await provider.request({
+          method: "personal_sign",
+          params: [message, address],
+        })) as string;
+
+        // Verify signature
+        setStep("verifying");
+        setStatus("Verifying signature...");
+
+        const loginResponse = await api.post("/auth/login", {
+          address,
+          signature,
+        });
+
+        // Store JWT + role
+        setAuth({
+          token: loginResponse.data.accessToken,
+          refreshToken: loginResponse.data.refreshToken,
+          role: loginResponse.data.role,
+          address: loginResponse.data.address,
+          uuid: loginResponse.data.uuid,
+          expiresIn: loginResponse.data.expiresIn,
+        });
+
+        setStep("success");
+        setStatus("✅ Login successful! Redirecting...");
+        setTimeout(() => navigate("/"), 1000);
       }
     } catch (error) {
-      console.error("[MetaMask SDK] Connection failed:", error);
-      setStatus("Connection failed. Please try again.");
+      console.error("[MetaMask SDK] Connection/Login failed:", error);
+      setStatus("Login failed. Please try again.");
       setStep("error");
       setLoading(false);
       setWalletConnecting(false);
@@ -501,13 +572,13 @@ export default function LoginPage() {
 
   const handleMainButtonClick = async () => {
     try {
-      // Check if mobile browser - use SDK
+      // Check if mobile browser - use SDK (continuous flow)
       if (isMobileBrowser() && !isConnected && !usingSdk) {
         await connectWithSDK();
         return;
       }
 
-      // 1. If not connected, connect (desktop/MetaMask browser)
+      // Desktop/MetaMask browser - connect wallet (continuous flow via useEffect)
       if (!isConnected && !sdkAddress) {
         console.log("[Login] Connecting wallet via injected connector");
         setStep("connecting");
@@ -519,33 +590,8 @@ export default function LoginPage() {
         const injectedConnector = connectors.find((c) => c.id === "injected");
         if (injectedConnector) {
           await connect({ connector: injectedConnector });
+          // Login flow continues automatically in useEffect when connectedAddress changes
         }
-        return;
-      }
-
-      const activeAddress = connectedAddress || (sdkAddress as `0x${string}`);
-      if (!activeAddress) return;
-
-      // 2. Check if we can fast-track (One-Click)
-      if (nonce && step !== "ready_to_sign") {
-        console.log("[Login] Nonce available, fast-tracking to signature");
-        await performSignature();
-        return;
-      }
-
-      // 3. If connected but no nonce, fetch nonce (Two-Step Fallback)
-      if (
-        step === "idle" ||
-        step === "error" ||
-        ((isConnected || sdkAddress) && step !== "ready_to_sign")
-      ) {
-        await initiateLogin(activeAddress);
-        return;
-      }
-
-      // 4. If nonce fetched, sign
-      if (step === "ready_to_sign") {
-        await performSignature();
         return;
       }
     } catch (err: unknown) {
