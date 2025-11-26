@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, LogOut, Copy, Check, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { isFakeMode } from '@/lib/web3/config';
 import { toast } from '@/hooks/use-toast';
 
 export const WalletConnectButton = () => {
@@ -23,38 +22,12 @@ export const WalletConnectButton = () => {
     setIsConnecting(true);
     
     try {
-      if (isFakeMode) {
-        // Simulate network delay for smoother feel
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // Mock wallet connection
-        const mockAddress = '0x742d35Cc6634C0532925a3b8D8b5C4e0c5E42F2B' as `0x${string}`;
-        setWalletConnection(mockAddress);
-        
-        // Mock user profile
-        if (!user) {
-          setUser({
-            id: 'user-1',
-            address: mockAddress,
-            role: 'MANUFACTURER',
-            displayName: 'John Manufacturer',
-            email: 'john@example.com',
-            organization: 'Demo Manufacturing Co.'
-          });
-        }
-        
-        toast({
-          title: "Wallet Connected (Demo)",
-          description: "Connected to mock wallet for demo purposes",
-        });
-      } else {
-        // TODO: Implement real WalletConnect
-        toast({
-          title: "WalletConnect",
-          description: "Real wallet connection not implemented yet",
-          variant: "destructive"
-        });
-      }
+      // Real wallet connection not needed - handled by Login page
+      toast({
+        title: "WalletConnect",
+        description: "Please use the login page to connect your wallet",
+        variant: "destructive"
+      });
     } catch (error) {
       toast({
         title: "Connection Failed",
@@ -123,7 +96,6 @@ export const WalletConnectButton = () => {
             </div>
             <span className="font-medium">Connected</span>
           </div>
-          {isFakeMode && <Badge variant="secondary" className="text-[10px] px-1.5 h-5">Demo</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0">
