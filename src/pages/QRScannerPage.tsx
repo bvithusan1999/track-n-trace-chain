@@ -252,7 +252,7 @@ export default function QRScannerPage() {
       ) : null}
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="mx-4 sm:max-w-md rounded-2xl border border-border bg-card/95 backdrop-blur">
+        <DialogContent className="mx-4 sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card/95 backdrop-blur">
           <DialogHeader>
             <DialogTitle>Package status</DialogTitle>
             <DialogDescription>
