@@ -37,6 +37,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { useHandoverSharedContext, useManufacturerContext } from "../context";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
