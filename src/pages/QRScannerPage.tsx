@@ -21,6 +21,7 @@ import { AlertTriangle, Loader2, ScanLine, ShieldCheck } from "lucide-react";
 import { api } from "@/services/api";
 import { batchService } from "@/services/batchService";
 import { PackageStatusDisplay } from "@/components/package/PackageStatusDisplay";
+import { toast } from "sonner";
 
 type PackageStatusResponse = {
   package?: {
@@ -74,6 +75,14 @@ type PackageStatusResponse = {
       blockchain?: { tx_hash?: string; ipfs_cid?: string | null };
     }>;
   };
+  location_check?: {
+    status?: string;
+    range_km?: number;
+    distance_km?: number | null;
+    device_location?: { latitude?: number; longitude?: number };
+    package_location?: { latitude?: number; longitude?: number };
+    warning?: string | null;
+  } | null;
 };
 
 type PdfLine = {
@@ -246,6 +255,30 @@ ${xrefStart}
   return new Blob([pdf], { type: "application/pdf" });
 };
 
+const getDeviceCoordinates = () =>
+  new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+    const isSecure = typeof window !== "undefined" && window.isSecureContext;
+    if (
+      !isSecure ||
+      typeof navigator === "undefined" ||
+      !navigator.geolocation
+    ) {
+      resolve(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+
 export default function QRScannerPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -265,9 +298,25 @@ export default function QRScannerPage() {
     setStatusResult(null);
     try {
       const normalized = payload.trim();
-      const response = await api.get(`/api/package-status/${normalized}`);
+      const coords = await getDeviceCoordinates();
+      const response = await api.get(`/api/package-status/${normalized}`, {
+        params: coords ?? undefined,
+      });
       const data = response.data?.data ?? response.data;
       setStatusResult(data ?? null);
+      const locationCheck = data?.location_check;
+      if (
+        locationCheck &&
+        locationCheck.status &&
+        locationCheck.status !== "OK" &&
+        locationCheck.status !== "NO_DEVICE_COORDS"
+      ) {
+        toast.warning("Location verification warning", {
+          description:
+            locationCheck.warning ??
+            "Device location does not match the package GPS range.",
+        });
+      }
     } catch (error) {
       console.error("Failed to submit QR payload", error);
       setSubmissionError(
@@ -459,125 +508,85 @@ export default function QRScannerPage() {
   };
 
   return (
-    <div className="relative isolate overflow-hidden rounded-3xl border border-border bg-gradient-to-b from-background via-background to-muted p-4 sm:p-6 lg:p-8 shadow-sm">
-      <div className="absolute inset-0 -z-10 opacity-70 blur-3xl" />
-      <div className="flex flex-col gap-8">
-        <header className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            Trusted QR Validation
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+      </div>
+
+      {/* Main Content Container */}
+      <div className="relative w-full max-w-3xl">
+        {/* White Card Container */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 sm:p-12 space-y-8">
+          {/* Hero Section */}
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">
+              Verify Package Status
+            </h1>
+            <p className="text-base sm:text-lg text-slate-600 font-medium">
+              Scan QR codes to check shipment status
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            All-in-one QR verification hub
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-            Scan encrypted payloads, confirm authenticity, and keep handovers
-            moving. Built for every role, optimized for the devices your teams
-            already use.
-          </p>
-        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-          <Card className="border-none bg-card/80 shadow-lg shadow-primary/5 backdrop-blur">
-            <CardHeader className="space-y-1 pb-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                Step 1
-              </p>
-              <CardTitle className="text-2xl">Scan encrypted QR</CardTitle>
-              <CardDescription>
-                Works across mobile and desktop. Submit encrypted data to
-                validate shipment movement instantly.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-medium text-foreground">
-                      Ready to scan?
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Tap the button and point your camera at the encrypted QR
-                      label.
-                    </p>
-                  </div>
-                  <Button
-                    size="lg"
-                    className="w-full sm:w-auto gap-2"
-                    onClick={() => setScannerOpen(true)}
-                  >
-                    <ScanLine className="h-5 w-5" />
-                    Launch scanner
-                  </Button>
-                </div>
-              </div>
-              {lastScannedValue ? (
-                <div className="rounded-2xl border border-border/70 bg-muted/40 p-4 text-sm">
-                  <p className="text-muted-foreground">
-                    Last encrypted payload:
-                  </p>
-                  <p className="font-mono break-all text-primary text-xs sm:text-sm">
-                    {lastScannedValue}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
-                  No scans yet. Your encrypted payload will appear here after
-                  the first scan.
-                </div>
-              )}
-
-              <div className="rounded-2xl border border-border/70 bg-background/90 p-4 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    1
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Quick flow</p>
-                    <p className="text-xs text-muted-foreground">
-                      Designed so field teams can operate confidently in
-                      seconds.
-                    </p>
-                  </div>
-                </div>
-                <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    Point the camera at the QR label or paste the string
-                    manually.
-                  </li>
-                  <li>Keep the device steady for best recognition results.</li>
-                  <li>
-                    Wait for the verification popup to confirm the segment
-                    status.
-                  </li>
-                </ol>
-              </div>
+          {/* Scanner Card */}
+          <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100/50 shadow-md hover:shadow-lg transition-all duration-300">
+            <CardContent className="pt-6 pb-6">
+              {/* Primary Action Button */}
+              <Button
+                size="lg"
+                className="w-full gap-3 h-16 text-lg font-bold shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 text-white"
+                onClick={() => setScannerOpen(true)}
+              >
+                <ScanLine className="h-6 w-6" />
+                <span>Start Scanner</span>
+              </Button>
             </CardContent>
           </Card>
 
-          <div className="space-y-6">
-            <Card className="border-none bg-card/80 shadow-lg shadow-primary/5 backdrop-blur">
-              <CardHeader className="pb-3">
-                <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Step 3
-                </p>
-                <CardTitle className="text-2xl">Recent verifications</CardTitle>
-                <CardDescription>
-                  Quick glance at the latest backend responses.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground/70">
-                  Response timeline
-                </p>
-                <Separator />
-                <p>
-                  Verification details appear in a popup immediately after the
-                  payload is submitted. This works seamlessly on mobile, tablet,
-                  and desktop.
-                </p>
-              </CardContent>
-            </Card>
+          {/* Quick Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="group rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-blue-100/50 hover:from-blue-100/80 hover:to-blue-150/60 p-6 transition-all duration-300 shadow-md hover:shadow-lg">
+              <div className="flex gap-4 items-start">
+                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition-shadow">
+                  1
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-bold text-slate-900">Scan QR</p>
+                  <p className="text-sm text-slate-600 mt-1.5 leading-relaxed font-medium">
+                    Point camera at label
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="group rounded-2xl border border-green-200 bg-gradient-to-br from-green-50/80 to-green-100/50 hover:from-green-100/80 hover:to-green-150/60 p-6 transition-all duration-300 shadow-md hover:shadow-lg">
+              <div className="flex gap-4 items-start">
+                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition-shadow">
+                  2
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-bold text-slate-900">Verify</p>
+                  <p className="text-sm text-slate-600 mt-1.5 leading-relaxed font-medium">
+                    Instant verification
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="group rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/80 to-purple-100/50 hover:from-purple-100/80 hover:to-purple-150/60 p-6 transition-all duration-300 shadow-md hover:shadow-lg">
+              <div className="flex gap-4 items-start">
+                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition-shadow">
+                  3
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-bold text-slate-900">Export</p>
+                  <p className="text-sm text-slate-600 mt-1.5 leading-relaxed font-medium">
+                    Download as PDF
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -591,51 +600,61 @@ export default function QRScannerPage() {
       ) : null}
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="mx-4 sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card/95 backdrop-blur">
-          <DialogHeader>
-            <DialogDescription>
-              {isSubmitting
-                ? "Submitting encrypted payload to backend..."
-                : null}
-            </DialogDescription>
-          </DialogHeader>
-
+        <DialogContent className="mx-2 w-full sm:max-w-2xl lg:max-w-4xl max-h-[85vh] overflow-y-auto rounded-2xl">
           {isSubmitting ? (
-            <div className="flex flex-col items-center gap-3 py-8">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Waiting for backend response. This usually takes a few seconds.
-              </p>
+            <div className="flex flex-col items-center justify-center gap-4 py-12">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="text-center space-y-2">
+                <p className="font-medium">Verifying Package</p>
+                <p className="text-sm text-muted-foreground">
+                  Checking blockchain and shipment data...
+                </p>
+              </div>
             </div>
           ) : submissionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                <p className="font-medium">Submission failed</p>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 flex flex-col gap-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-destructive">
+                    Verification Failed
+                  </p>
+                  <p className="text-sm text-destructive/90 mt-1">
+                    {submissionError}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-destructive">{submissionError}</p>
-            </div>
-          ) : statusResult ? (
-            <div ref={printRef}>
-              <PackageStatusDisplay data={statusResult} />
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Scan a QR code to view verification feedback.
-            </p>
-          )}
-
-          {statusResult && !isSubmitting ? (
-            <div className="flex justify-end">
               <Button
-                variant="secondary"
-                className="gap-2"
-                onClick={handleDownloadPdf}
+                variant="outline"
+                className="w-full"
+                onClick={() => handleDialogChange(false)}
               >
-                Download as PDF
+                Try Again
               </Button>
             </div>
-          ) : null}
+          ) : statusResult ? (
+            <div ref={printRef} className="space-y-4">
+              <PackageStatusDisplay data={statusResult} />
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleDialogChange(false)}
+                >
+                  Close
+                </Button>
+                <Button className="flex-1" onClick={handleDownloadPdf}>
+                  Download PDF
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Scan a QR code to view verification details
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

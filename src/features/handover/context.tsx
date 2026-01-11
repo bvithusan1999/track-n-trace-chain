@@ -162,6 +162,113 @@ const createStatusBuckets = (): SupplierStatusBuckets =>
     return acc;
   }, {} as SupplierStatusBuckets);
 
+type RangeToastContent = {
+  title: string;
+  description?: string;
+};
+
+const extractApiErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  if ("response" in error) {
+    const response = (error as {
+      response?: { data?: { error?: unknown; message?: unknown } };
+    }).response;
+    const apiError = response?.data?.error;
+    if (typeof apiError === "string") {
+      return apiError;
+    }
+    if (apiError && typeof apiError === "object") {
+      const message = (apiError as { message?: unknown }).message;
+      if (typeof message === "string") {
+        return message;
+      }
+    }
+    const fallbackMessage = response?.data?.message;
+    if (typeof fallbackMessage === "string") {
+      return fallbackMessage;
+    }
+  }
+
+  if ("message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return undefined;
+};
+
+const extractRangeKmLabel = (message: string): string | null => {
+  const match = message.match(/within\s+([0-9.]+)\s*km/i);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]} km`;
+};
+
+const buildRangeToastContent = (message: string): RangeToastContent | null => {
+  const lower = message.toLowerCase();
+  const rangeLabel = extractRangeKmLabel(message) ?? "the required range";
+
+  if (lower.includes("origin checkpoint")) {
+    return {
+      title: "Too far from pickup checkpoint",
+      description: `Move within ${rangeLabel} of the pickup checkpoint and try takeover again.`,
+    };
+  }
+
+  if (lower.includes("destination checkpoint")) {
+    return {
+      title: "Too far from delivery checkpoint",
+      description: `Move within ${rangeLabel} of the delivery checkpoint and try handover again.`,
+    };
+  }
+
+  if (lower.includes("latest device gps reading")) {
+    return {
+      title: "Device location mismatch",
+      description: `Your current location must be within ${rangeLabel} of the latest device GPS reading.`,
+    };
+  }
+
+  if (lower.includes("no gps sensor readings")) {
+    return {
+      title: "Device GPS data missing",
+      description:
+        "No GPS readings were found for the selected package. Make sure the device is online and sending GPS data.",
+    };
+  }
+
+  if (lower.includes("gps reading has invalid coordinates")) {
+    return {
+      title: "Device GPS data invalid",
+      description:
+        "The latest GPS reading is missing coordinates. Please check the device telemetry and try again.",
+    };
+  }
+
+  return null;
+};
+
+const showSegmentErrorToast = (error: unknown, fallback: string) => {
+  const message = extractApiErrorMessage(error);
+  if (message) {
+    const rangeToast = buildRangeToastContent(message);
+    if (rangeToast) {
+      toast.error(rangeToast.title, { description: rangeToast.description });
+      return;
+    }
+    toast.error(message);
+    return;
+  }
+
+  toast.error(fallback);
+};
+
 const mapSegmentStatusToSupplierTab = (
   status?: string | null
 ): SupplierShipmentStatus => {
@@ -723,16 +830,7 @@ export const HandoverProvider = ({
       );
     },
     onError: (error: unknown) => {
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof (error as { response?: { data?: { error?: string } } }).response
-          ?.data?.error === "string"
-          ? (error as { response?: { data?: { error?: string } } }).response
-              ?.data?.error
-          : undefined;
-      toast.error(message || "Failed to take over segment");
+      showSegmentErrorToast(error, "Failed to take over segment");
     },
     onSettled: () => {
       setTakeoverSegmentId(null);
@@ -783,16 +881,7 @@ export const HandoverProvider = ({
       );
     } catch (error) {
       console.error(error);
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof (error as { response?: { data?: { error?: string } } }).response
-          ?.data?.error === "string"
-          ? (error as { response?: { data?: { error?: string } } }).response
-              ?.data?.error
-          : undefined;
-      toast.error(message || "Failed to submit handover details.");
+      showSegmentErrorToast(error, "Failed to submit handover details.");
     } finally {
       setHandoverLoading(false);
     }

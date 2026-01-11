@@ -71,6 +71,14 @@ type PackageStatusResponse = {
       blockchain?: { tx_hash?: string; ipfs_cid?: string | null };
     }>;
   };
+  location_check?: {
+    status?: string;
+    range_km?: number;
+    distance_km?: number | null;
+    device_location?: { latitude?: number; longitude?: number };
+    package_location?: { latitude?: number; longitude?: number };
+    warning?: string | null;
+  } | null;
 };
 
 const getStatusColor = (status?: string) => {
@@ -155,6 +163,24 @@ export function PackageStatusDisplay({ data }: PackageStatusDisplayProps) {
   const breachStats = data.breaches?.statistics;
   const breachRecords = data.breaches?.records || [];
   const hasActiveBreaches = (breachStats?.active ?? 0) > 0;
+  const locationCheck = data.location_check;
+  const locationStatus = locationCheck?.status ?? null;
+  const isLocationWarning =
+    locationStatus !== null &&
+    locationStatus !== "OK" &&
+    locationStatus !== "NO_DEVICE_COORDS";
+  const locationBadgeText = locationStatus
+    ? locationStatus.replace(/_/g, " ")
+    : "UNKNOWN";
+  const distanceLabel =
+    locationCheck?.distance_km !== null &&
+    locationCheck?.distance_km !== undefined
+      ? `${locationCheck.distance_km.toFixed(2)} km`
+      : null;
+  const rangeLabel =
+    locationCheck?.range_km !== null && locationCheck?.range_km !== undefined
+      ? `${locationCheck.range_km} km`
+      : null;
   const batchExpiry =
     data.package?.batch?.expiry_date ??
     data.package?.batch?.expiryDate ??
@@ -186,6 +212,54 @@ export function PackageStatusDisplay({ data }: PackageStatusDisplayProps) {
             {data.package?.package_accepted || "N/A"}
           </Badge>
         </div>
+        {locationCheck ? (
+          <div
+            className={`rounded-lg border p-4 ${
+              isLocationWarning
+                ? "border-amber-200/80 bg-amber-50/80"
+                : "border-emerald-200/80 bg-emerald-50/80"
+            }`}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-md ${
+                    isLocationWarning
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {isLocationWarning ? (
+                    <AlertTriangle className="h-5 w-5" />
+                  ) : (
+                    <MapPin className="h-5 w-5" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Location verification
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {locationCheck.warning ??
+                      (isLocationWarning
+                        ? "Device location is outside the package GPS range."
+                        : "Device location matches the package GPS range.")}
+                  </p>
+                </div>
+              </div>
+              <Badge
+                className={`h-fit text-xs px-3 py-1 ${
+                  isLocationWarning
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-emerald-100 text-emerald-800"
+                }`}
+              >
+                {locationBadgeText}
+              </Badge>
+            </div>
+            {/* Range and distance intentionally hidden in UI */}
+          </div>
+        ) : null}
 
         {/* Quick Stats (Product + Temps + Manufacture/Expiry) */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
