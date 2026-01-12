@@ -13,13 +13,17 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import axios from "axios";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { City, Country, State } from "country-state-city";
 import { Check, ChevronsUpDown, X } from "lucide-react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/useAppToast";
 import { api } from "@/lib/api";
 
 type SearchableSelectOption = {
@@ -74,7 +78,10 @@ function SearchableSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+      >
         <Command>
           <CommandInput
             placeholder={searchPlaceholder ?? placeholder}
@@ -127,6 +134,7 @@ function SearchableSelect({
 export default function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { showSuccess, showError } = useAppToast();
   const { walletAddress, token } = useAppStore();
 
   const [registerForOther, setRegisterForOther] = useState(false);
@@ -272,7 +280,7 @@ export default function Register() {
     e.preventDefault();
 
     if (!walletAddress) {
-      toast.error("Please connect your wallet before registration.");
+      showError("Please connect your wallet before registration");
       return;
     }
 
@@ -281,27 +289,27 @@ export default function Register() {
       : walletAddress;
 
     if (registerForOther && !otherPublicKey.trim()) {
-      toast.error("Please provide a public key for the other wallet.");
+      showError("Please provide a public key for the other wallet");
       return;
     }
 
     if (!form.email.includes("@")) {
-      toast.error("Please enter a valid email address.");
+      showError("Please enter a valid email address");
       return;
     }
 
     if (!form.countryOfIncorporation) {
-      toast.error("Please select a country of incorporation.");
+      showError("Please select a country of incorporation");
       return;
     }
 
     if (form.countryOfIncorporation.length < 2) {
-      toast.error("Country code must be at least 2 characters (e.g., US).");
+      showError("Country code must be at least 2 characters (e.g., US)");
       return;
     }
 
     if (requiresCheckpoint && !form.checkpointCountry) {
-      toast.error("Please select a checkpoint country.");
+      showError("Please select a checkpoint country");
       return;
     }
 
@@ -310,7 +318,7 @@ export default function Register() {
       checkpointStateOptions.length > 0 &&
       !form.checkpointState
     ) {
-      toast.error("Please select a checkpoint state or province.");
+      showError("Please select a checkpoint state or province");
       return;
     }
 
@@ -321,9 +329,9 @@ export default function Register() {
       const splitAndTrim = (value: string) =>
         value
           ? value
-            .split(",")
-            .map((entry) => entry.trim())
-            .filter(Boolean)
+              .split(",")
+              .map((entry) => entry.trim())
+              .filter(Boolean)
           : [];
 
       // Build details object based on organization type
@@ -421,10 +429,10 @@ export default function Register() {
       const response = await api.post("/api/registrations", payload);
 
       if (response.status === 200 || response.status === 201) {
-        toast.success("Registration successful!");
+        showSuccess("Registration successful");
         navigate("/");
       } else {
-        toast.error("Unexpected server response.");
+        showError("Unexpected server response");
       }
     } catch (error) {
       console.error(error);
@@ -434,7 +442,7 @@ export default function Register() {
           ? error.response.data.error
           : "Registration failed.";
 
-      toast.error(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -626,7 +634,9 @@ export default function Register() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="checkpointAddress">Checkpoint Address</Label>
+                    <Label htmlFor="checkpointAddress">
+                      Checkpoint Address
+                    </Label>
                     <Input
                       id="checkpointAddress"
                       name="checkpointAddress"
@@ -847,4 +857,3 @@ export default function Register() {
     </div>
   );
 }
-

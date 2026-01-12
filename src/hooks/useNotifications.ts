@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/lib/store";
-import { toast } from "sonner";
 
 // ============================================================================
 // TYPES
@@ -257,9 +257,22 @@ function useWebSocket(url: string, token: string | null, enabled: boolean) {
 // MAIN NOTIFICATION HOOK
 // ============================================================================
 
-export function useNotifications() {
+export function useNotifications(options?: {
+  suppressNotificationsFor?: {
+    shipmentIds?: string[];
+    segmentIds?: string[];
+  };
+}) {
   const token = useAppStore((state) => state.token);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  // Use ref to store current suppression options to avoid dependency issues
+  const suppressionRef = useRef(options?.suppressNotificationsFor);
+
+  useEffect(() => {
+    suppressionRef.current = options?.suppressNotificationsFor;
+  }, [options?.suppressNotificationsFor]);
 
   // WebSocket connection
   const WS_URL =
@@ -331,36 +344,33 @@ export function useNotifications() {
     if (lastMessage.type === "NEW_NOTIFICATION") {
       const notification: Notification = lastMessage.data;
 
-      // Show enhanced toast notification
-      const severityIcons = {
-        INFO: "ℹ️",
-        SUCCESS: "✅",
-        WARNING: "⚠️",
-        ERROR: "❌",
-        CRITICAL: "🚨",
-      };
+      // Skip notifications for shipments/segments currently being accepted
+      if (suppressionRef.current) {
+        if (
+          notification.shipmentId &&
+          suppressionRef.current.shipmentIds?.includes(notification.shipmentId)
+        ) {
+          // Still invalidate queries but don't show toast
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          queryClient.invalidateQueries({
+            queryKey: ["notifications", "unread-count"],
+          });
+          return;
+        }
+        if (
+          notification.segmentId &&
+          suppressionRef.current.segmentIds?.includes(notification.segmentId)
+        ) {
+          // Still invalidate queries but don't show toast
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          queryClient.invalidateQueries({
+            queryKey: ["notifications", "unread-count"],
+          });
+          return;
+        }
+      }
 
-      const toastVariant = getSeverityToastVariant(notification.severity);
-      const icon = severityIcons[notification.severity];
-
-      toast[toastVariant](`${icon} ${notification.title}`, {
-        description: notification.message,
-        duration: notification.severity === "CRITICAL" ? 10000 : 5000,
-        action:
-          notification.shipmentId || notification.segmentId
-            ? {
-                label: "View",
-                onClick: () => {
-                  // TODO: Navigate to related entity
-                  console.log("Navigate to:", {
-                    shipmentId: notification.shipmentId,
-                    segmentId: notification.segmentId,
-                    packageId: notification.packageId,
-                  });
-                },
-              }
-            : undefined,
-      });
+      // Toasts disabled; still refresh notification data.
 
       // Invalidate queries to refresh notification list
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -375,8 +385,34 @@ export function useNotifications() {
     }
   }, [lastMessage, queryClient]);
 
+  // Filter notifications based on suppression
+  const filteredNotifications = useMemo(() => {
+    if (!notificationsData?.notifications || !suppressionRef.current) {
+      return notificationsData?.notifications || [];
+    }
+
+    return notificationsData.notifications.filter((notification) => {
+      // Suppress notifications for shipments/segments currently being accepted
+      if (suppressionRef.current) {
+        if (
+          notification.shipmentId &&
+          suppressionRef.current.shipmentIds?.includes(notification.shipmentId)
+        ) {
+          return false; // Filter out (suppress)
+        }
+        if (
+          notification.segmentId &&
+          suppressionRef.current.segmentIds?.includes(notification.segmentId)
+        ) {
+          return false; // Filter out (suppress)
+        }
+      }
+      return true; // Keep notification
+    });
+  }, [notificationsData?.notifications]);
+
   return {
-    notifications: notificationsData?.notifications || [],
+    notifications: filteredNotifications,
     total: notificationsData?.total || 0,
     unreadCount: unreadCountData?.count || 0,
     isLoading,
@@ -392,19 +428,3 @@ export function useNotifications() {
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
-
-function getSeverityToastVariant(
-  severity: NotificationSeverity
-): "success" | "error" | "warning" | "info" {
-  switch (severity) {
-    case "SUCCESS":
-      return "success";
-    case "ERROR":
-    case "CRITICAL":
-      return "error";
-    case "WARNING":
-      return "warning";
-    default:
-      return "info";
-  }
-}

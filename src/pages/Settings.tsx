@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -13,12 +13,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Settings as SettingsIcon, User, Wifi, Thermometer, Moon, Save } from 'lucide-react';
-import { useAppStore } from '@/lib/store';
-import { toast } from '@/hooks/use-toast';
-import { registrationService } from '@/services/registrationService';
-import { Textarea } from '@/components/ui/textarea';
+} from "@/components/ui/dialog";
+import {
+  Settings as SettingsIcon,
+  User,
+  Wifi,
+  Thermometer,
+  Moon,
+  Save,
+} from "lucide-react";
+import { useAppStore } from "@/lib/store";
+import { useAppToast } from "@/hooks/useAppToast";
+import { registrationService } from "@/services/registrationService";
+import { Textarea } from "@/components/ui/textarea";
 
 type RegistrationRecord = {
   id?: string;
@@ -62,40 +69,42 @@ type ConnectionSettings = {
 };
 
 const emptyRegistration: RegistrationRecord = {
-  type: '',
+  type: "",
   identification: {
-    publicKey: '',
-    legalName: '',
-    businessRegNo: '',
-    countryOfIncorporation: '',
+    publicKey: "",
+    legalName: "",
+    businessRegNo: "",
+    countryOfIncorporation: "",
   },
   contact: {
-    personName: '',
-    designation: '',
-    email: '',
-    phone: '',
-    address: '',
+    personName: "",
+    designation: "",
+    email: "",
+    phone: "",
+    address: "",
   },
   metadata: {
-    publicKey: '',
-    smartContractRole: '',
-    dateOfRegistration: '',
+    publicKey: "",
+    smartContractRole: "",
+    dateOfRegistration: "",
   },
   details: {
     productCategoriesManufactured: [],
     certifications: [],
   },
   checkpoint: {
-    name: '',
-    address: '',
-    latitude: '',
-    longitude: '',
-    state: '',
-    country: '',
+    name: "",
+    address: "",
+    latitude: "",
+    longitude: "",
+    state: "",
+    country: "",
   },
 };
 
-const normalizeRegistration = (data: Partial<RegistrationRecord> | null | undefined): RegistrationRecord => ({
+const normalizeRegistration = (
+  data: Partial<RegistrationRecord> | null | undefined
+): RegistrationRecord => ({
   ...emptyRegistration,
   ...(data ?? {}),
   identification: {
@@ -120,14 +129,20 @@ const normalizeRegistration = (data: Partial<RegistrationRecord> | null | undefi
   },
 });
 
-const resolveRegistrationPayload = (raw: unknown): Partial<RegistrationRecord> | null => {
-  if (!raw || typeof raw !== 'object') return null;
+const resolveRegistrationPayload = (
+  raw: unknown
+): Partial<RegistrationRecord> | null => {
+  if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
 
-  if ('payload' in record && typeof record.payload === 'object' && record.payload !== null) {
+  if (
+    "payload" in record &&
+    typeof record.payload === "object" &&
+    record.payload !== null
+  ) {
     const payload = { ...(record.payload as Partial<RegistrationRecord>) };
-    if (!payload.type && typeof record.reg_type === 'string') {
-      payload.type = record.reg_type as RegistrationRecord['type'];
+    if (!payload.type && typeof record.reg_type === "string") {
+      payload.type = record.reg_type as RegistrationRecord["type"];
     }
     return payload;
   }
@@ -136,15 +151,16 @@ const resolveRegistrationPayload = (raw: unknown): Partial<RegistrationRecord> |
 };
 
 const listToTextareaValue = (values: string[] | undefined): string =>
-  (values ?? []).join('\n');
+  (values ?? []).join("\n");
 
 const textareaValueToList = (value: string): string[] =>
   value
-    .split('\n')
+    .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
 
 const Settings = () => {
+  const { showSuccess, showError } = useAppToast();
   const {
     uuid,
     user,
@@ -158,19 +174,22 @@ const Settings = () => {
   } = useAppStore();
 
   const registrationId = uuid;
-  console.log('Settings page - registrationId:', registrationId);
-
+  console.log("Settings page - registrationId:", registrationId);
 
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
-  const [registration, setRegistration] = useState<RegistrationRecord | null>(null);
-  const [editableRegistration, setEditableRegistration] = useState<RegistrationRecord>(emptyRegistration);
-  const [connectionSettings, setConnectionSettings] = useState<ConnectionSettings>({
-    rpcUrl: 'https://sepolia.infura.io/v3/demo',
-    wsUrl: 'wss://ws.example.com/telemetry',
-    mqttUrl: 'wss://mqtt.example.com:8083/mqtt',
-  });
+  const [registration, setRegistration] = useState<RegistrationRecord | null>(
+    null
+  );
+  const [editableRegistration, setEditableRegistration] =
+    useState<RegistrationRecord>(emptyRegistration);
+  const [connectionSettings, setConnectionSettings] =
+    useState<ConnectionSettings>({
+      rpcUrl: "https://sepolia.infura.io/v3/demo",
+      wsUrl: "wss://ws.example.com/telemetry",
+      mqttUrl: "wss://mqtt.example.com:8083/mqtt",
+    });
 
   useEffect(() => {
     if (!registrationId) {
@@ -180,13 +199,12 @@ const Settings = () => {
 
     let isMounted = true;
     setIsProfileLoading(true);
-    console.log('Settings: fetching registration', registrationId);
-
+    console.log("Settings: fetching registration", registrationId);
 
     registrationService
       .getById(registrationId)
       .then((data) => {
-        console.log('Settings: fetch success', data);
+        console.log("Settings: fetch success", data);
 
         if (!isMounted) return;
         const payload = resolveRegistrationPayload(data);
@@ -195,12 +213,8 @@ const Settings = () => {
         setEditableRegistration(normalized);
       })
       .catch((error) => {
-        console.error('Error fetching registration:', error);
-        toast({
-          title: 'Unable to load profile',
-          description: 'Please try again later.',
-          variant: 'destructive',
-        });
+        console.error("Error fetching registration:", error);
+        showError("Unable to load profile");
       })
       .finally(() => {
         if (isMounted) {
@@ -214,7 +228,9 @@ const Settings = () => {
   }, [registrationId]);
 
   const handleOpenProfileDialog = () => {
-    setEditableRegistration(registration ? normalizeRegistration(registration) : emptyRegistration);
+    setEditableRegistration(
+      registration ? normalizeRegistration(registration) : emptyRegistration
+    );
     setIsProfileDialogOpen(true);
   };
 
@@ -223,7 +239,10 @@ const Settings = () => {
     setIsProfileDialogOpen(false);
   };
 
-  const updateIdentificationField = (field: keyof RegistrationRecord['identification'], value: string) => {
+  const updateIdentificationField = (
+    field: keyof RegistrationRecord["identification"],
+    value: string
+  ) => {
     setEditableRegistration((prev) => ({
       ...prev,
       identification: {
@@ -233,7 +252,10 @@ const Settings = () => {
     }));
   };
 
-  const updateContactField = (field: keyof RegistrationRecord['contact'], value: string) => {
+  const updateContactField = (
+    field: keyof RegistrationRecord["contact"],
+    value: string
+  ) => {
     setEditableRegistration((prev) => ({
       ...prev,
       contact: {
@@ -243,7 +265,10 @@ const Settings = () => {
     }));
   };
 
-  const updateMetadataField = (field: keyof RegistrationRecord['metadata'], value: string) => {
+  const updateMetadataField = (
+    field: keyof RegistrationRecord["metadata"],
+    value: string
+  ) => {
     setEditableRegistration((prev) => ({
       ...prev,
       metadata: {
@@ -253,7 +278,10 @@ const Settings = () => {
     }));
   };
 
-  const updateDetailsField = (field: keyof RegistrationRecord['details'], value: string[]) => {
+  const updateDetailsField = (
+    field: keyof RegistrationRecord["details"],
+    value: string[]
+  ) => {
     setEditableRegistration((prev) => ({
       ...prev,
       details: {
@@ -263,7 +291,10 @@ const Settings = () => {
     }));
   };
 
-  const updateCheckpointField = (field: keyof RegistrationRecord['checkpoint'], value: string) => {
+  const updateCheckpointField = (
+    field: keyof RegistrationRecord["checkpoint"],
+    value: string
+  ) => {
     setEditableRegistration((prev) => ({
       ...prev,
       checkpoint: {
@@ -273,54 +304,68 @@ const Settings = () => {
     }));
   };
 
-const handleSaveRegistration = async () => {
-  if (!registrationId) {
-    toast({ title: 'Missing user identifier', description: 'Cannot update profile without a valid registration id.', variant: 'destructive' });
-    return;
-  }
-
-  setIsProfileSaving(true);
-  try {
-    const payload = normalizeRegistration(editableRegistration);
-
-    await registrationService.update(registrationId, payload);
-
-    // Re-fetch so the UI gets the canonical data returned by the API
-    const latest = await registrationService.getById(registrationId);
-    const normalized = normalizeRegistration(resolveRegistrationPayload(latest));
-
-    setRegistration(normalized);
-    setEditableRegistration(normalized);
-
-    if (user) {
-      setUser({
-        ...user,
-        displayName: normalized.contact.personName || user.displayName,
-        email: normalized.contact.email || user.email,
-        organization: normalized.identification.legalName || user.organization,
-      });
+  const handleSaveRegistration = async () => {
+    if (!registrationId) {
+      showError("Cannot update profile without a valid registration ID");
+      return;
     }
 
-    toast({ title: 'Profile saved', description: 'Registration details have been updated.' });
-    setIsProfileDialogOpen(false);
-  } catch (error) {
-    console.error('Error updating registration:', error);
-    toast({ title: 'Save failed', description: 'We could not update the profile. Please try again.', variant: 'destructive' });
-  } finally {
-    setIsProfileSaving(false);
-  }
-};
+    setIsProfileSaving(true);
+    try {
+      const payload = normalizeRegistration(editableRegistration);
+
+      await registrationService.update(registrationId, payload);
+
+      // Re-fetch so the UI gets the canonical data returned by the API
+      const latest = await registrationService.getById(registrationId);
+      const normalized = normalizeRegistration(
+        resolveRegistrationPayload(latest)
+      );
+
+      setRegistration(normalized);
+      setEditableRegistration(normalized);
+
+      if (user) {
+        setUser({
+          ...user,
+          displayName: normalized.contact.personName || user.displayName,
+          email: normalized.contact.email || user.email,
+          organization:
+            normalized.identification.legalName || user.organization,
+        });
+      }
+
+      showSuccess("Profile saved");
+      setIsProfileDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating registration:", error);
+      showError("We could not update the profile. Please try again");
+    } finally {
+      setIsProfileSaving(false);
+    }
+  };
 
   const realtimeOptions = useMemo(
     () => [
-      { value: 'Mock', label: 'Mock Data', description: 'Use simulated data for demo' },
-      { value: 'WebSocket', label: 'WebSocket', description: 'Real-time WebSocket connection' },
-      { value: 'MQTT', label: 'MQTT', description: 'MQTT broker connection' },
+      {
+        value: "Mock",
+        label: "Mock Data",
+        description: "Use simulated data for demo",
+      },
+      {
+        value: "WebSocket",
+        label: "WebSocket",
+        description: "Real-time WebSocket connection",
+      },
+      { value: "MQTT", label: "MQTT", description: "MQTT broker connection" },
     ],
     []
   );
 
-  const handleConnectionChange = (field: keyof ConnectionSettings, value: string) => {
+  const handleConnectionChange = (
+    field: keyof ConnectionSettings,
+    value: string
+  ) => {
     setConnectionSettings((prev) => ({
       ...prev,
       [field]: value,
@@ -328,10 +373,7 @@ const handleSaveRegistration = async () => {
   };
 
   const handleSaveConnections = () => {
-    toast({
-      title: 'Connection settings saved',
-      description: 'Connection preferences have been updated.',
-    });
+    showSuccess("Connection settings saved");
   };
 
   return (
@@ -342,7 +384,6 @@ const handleSaveRegistration = async () => {
           Configure your application preferences and connection settings
         </p>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -363,43 +404,45 @@ const handleSaveRegistration = async () => {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             {isProfileLoading ? (
-              <p className="text-muted-foreground">Loading profile information…</p>
+              <p className="text-muted-foreground">
+                Loading profile information…
+              </p>
             ) : (
               <div className="space-y-3">
                 <div>
                   <p className="text-muted-foreground">Organization</p>
                   <p className="text-base font-medium">
-                    {registration?.identification.legalName || '—'}
+                    {registration?.identification.legalName || "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Registration Type</p>
                   <Badge variant="secondary" className="mt-1">
-                    {registration?.type || 'N/A'}
+                    {registration?.type || "N/A"}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Contact Person</p>
                   <p className="text-base font-medium">
-                    {registration?.contact.personName || '—'}
+                    {registration?.contact.personName || "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Email</p>
                   <p className="text-base font-medium">
-                    {registration?.contact.email || '—'}
+                    {registration?.contact.email || "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Phone</p>
                   <p className="text-base font-medium">
-                    {registration?.contact.phone || '—'}
+                    {registration?.contact.phone || "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Address</p>
                   <p className="text-base font-medium">
-                    {registration?.contact.address || '—'}
+                    {registration?.contact.address || "—"}
                   </p>
                 </div>
                 {user?.role && (
@@ -554,7 +597,6 @@ const handleSaveRegistration = async () => {
           </CardContent>
         </Card> */}
       </div>
-
       <Dialog
         open={isProfileDialogOpen}
         onOpenChange={(open) => {
@@ -565,10 +607,11 @@ const handleSaveRegistration = async () => {
           <DialogHeader>
             <DialogTitle>Edit Registration Profile</DialogTitle>
             <DialogDescription>
-              Update your organization information. Changes are saved to the registry.
+              Update your organization information. Changes are saved to the
+              registry.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="overflow-y-auto max-h-[calc(85vh-180px)] px-1">
             <div className="space-y-6 py-2">
               {/* Essential Information Card */}
@@ -582,75 +625,115 @@ const handleSaveRegistration = async () => {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-legal-name" className="text-sm font-medium">
-                        Organization Name <span className="text-red-500">*</span>
+                      <Label
+                        htmlFor="edit-legal-name"
+                        className="text-sm font-medium"
+                      >
+                        Organization Name{" "}
+                        <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit-legal-name"
                         value={editableRegistration.identification.legalName}
-                        onChange={(event) => updateIdentificationField('legalName', event.target.value)}
+                        onChange={(event) =>
+                          updateIdentificationField(
+                            "legalName",
+                            event.target.value
+                          )
+                        }
                         placeholder="Acme Manufacturing Ltd."
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-type" className="text-sm font-medium">
-                        Registration Type <span className="text-red-500">*</span>
+                      <Label
+                        htmlFor="edit-type"
+                        className="text-sm font-medium"
+                      >
+                        Registration Type{" "}
+                        <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit-type"
                         value={editableRegistration.type}
-                        onChange={(event) => setEditableRegistration((prev) => ({ ...prev, type: event.target.value }))}
+                        onChange={(event) =>
+                          setEditableRegistration((prev) => ({
+                            ...prev,
+                            type: event.target.value,
+                          }))
+                        }
                         placeholder="MANUFACTURER"
                         className="h-10"
                       />
-                      <p className="text-xs text-muted-foreground">e.g., MANUFACTURER, DISTRIBUTOR, RETAILER</p>
+                      <p className="text-xs text-muted-foreground">
+                        e.g., MANUFACTURER, DISTRIBUTOR, RETAILER
+                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-contact-name" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-contact-name"
+                        className="text-sm font-medium"
+                      >
                         Contact Person <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit-contact-name"
                         value={editableRegistration.contact.personName}
-                        onChange={(event) => updateContactField('personName', event.target.value)}
+                        onChange={(event) =>
+                          updateContactField("personName", event.target.value)
+                        }
                         placeholder="Jane Doe"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-email" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-email"
+                        className="text-sm font-medium"
+                      >
                         Email Address <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit-email"
                         type="email"
                         value={editableRegistration.contact.email}
-                        onChange={(event) => updateContactField('email', event.target.value)}
+                        onChange={(event) =>
+                          updateContactField("email", event.target.value)
+                        }
                         placeholder="jane.doe@company.com"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-phone" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-phone"
+                        className="text-sm font-medium"
+                      >
                         Phone Number
                       </Label>
                       <Input
                         id="edit-phone"
                         value={editableRegistration.contact.phone}
-                        onChange={(event) => updateContactField('phone', event.target.value)}
+                        onChange={(event) =>
+                          updateContactField("phone", event.target.value)
+                        }
                         placeholder="+94 77 123 4567"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-designation" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-designation"
+                        className="text-sm font-medium"
+                      >
                         Job Title
                       </Label>
                       <Input
                         id="edit-designation"
                         value={editableRegistration.contact.designation}
-                        onChange={(event) => updateContactField('designation', event.target.value)}
+                        onChange={(event) =>
+                          updateContactField("designation", event.target.value)
+                        }
                         placeholder="Supply Chain Director"
                         className="h-10"
                       />
@@ -670,37 +753,63 @@ const handleSaveRegistration = async () => {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-business-reg" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-business-reg"
+                        className="text-sm font-medium"
+                      >
                         Registration Number
                       </Label>
                       <Input
                         id="edit-business-reg"
-                        value={editableRegistration.identification.businessRegNo}
-                        onChange={(event) => updateIdentificationField('businessRegNo', event.target.value)}
+                        value={
+                          editableRegistration.identification.businessRegNo
+                        }
+                        onChange={(event) =>
+                          updateIdentificationField(
+                            "businessRegNo",
+                            event.target.value
+                          )
+                        }
                         placeholder="REG-2024-12345"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-country" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-country"
+                        className="text-sm font-medium"
+                      >
                         Country
                       </Label>
                       <Input
                         id="edit-country"
-                        value={editableRegistration.identification.countryOfIncorporation}
-                        onChange={(event) => updateIdentificationField('countryOfIncorporation', event.target.value)}
+                        value={
+                          editableRegistration.identification
+                            .countryOfIncorporation
+                        }
+                        onChange={(event) =>
+                          updateIdentificationField(
+                            "countryOfIncorporation",
+                            event.target.value
+                          )
+                        }
                         placeholder="Sri Lanka"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="edit-address" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-address"
+                        className="text-sm font-medium"
+                      >
                         Business Address
                       </Label>
                       <Textarea
                         id="edit-address"
                         value={editableRegistration.contact.address}
-                        onChange={(event) => updateContactField('address', event.target.value)}
+                        onChange={(event) =>
+                          updateContactField("address", event.target.value)
+                        }
                         placeholder="123 Industrial Park, Colombo 03"
                         rows={2}
                         className="resize-none"
@@ -713,39 +822,64 @@ const handleSaveRegistration = async () => {
               {/* Products & Certifications Card */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Products & Certifications</CardTitle>
+                  <CardTitle className="text-base">
+                    Products & Certifications
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-product-categories" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-product-categories"
+                        className="text-sm font-medium"
+                      >
                         Product Categories
                       </Label>
                       <Textarea
                         id="edit-product-categories"
-                        value={listToTextareaValue(editableRegistration.details.productCategoriesManufactured)}
+                        value={listToTextareaValue(
+                          editableRegistration.details
+                            .productCategoriesManufactured
+                        )}
                         onChange={(event) =>
-                          updateDetailsField('productCategoriesManufactured', textareaValueToList(event.target.value))
+                          updateDetailsField(
+                            "productCategoriesManufactured",
+                            textareaValueToList(event.target.value)
+                          )
                         }
                         placeholder="Vaccines&#10;Medical Devices&#10;Pharmaceuticals"
                         rows={4}
                         className="resize-none font-mono text-sm"
                       />
-                      <p className="text-xs text-muted-foreground">One category per line</p>
+                      <p className="text-xs text-muted-foreground">
+                        One category per line
+                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-certifications" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-certifications"
+                        className="text-sm font-medium"
+                      >
                         Certifications
                       </Label>
                       <Textarea
                         id="edit-certifications"
-                        value={listToTextareaValue(editableRegistration.details.certifications)}
-                        onChange={(event) => updateDetailsField('certifications', textareaValueToList(event.target.value))}
+                        value={listToTextareaValue(
+                          editableRegistration.details.certifications
+                        )}
+                        onChange={(event) =>
+                          updateDetailsField(
+                            "certifications",
+                            textareaValueToList(event.target.value)
+                          )
+                        }
                         placeholder="ISO 9001:2015&#10;GMP Certified&#10;WHO Prequalified"
                         rows={4}
                         className="resize-none font-mono text-sm"
                       />
-                      <p className="text-xs text-muted-foreground">One certification per line</p>
+                      <p className="text-xs text-muted-foreground">
+                        One certification per line
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -759,74 +893,104 @@ const handleSaveRegistration = async () => {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="edit-checkpoint-name" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-checkpoint-name"
+                        className="text-sm font-medium"
+                      >
                         Facility Name
                       </Label>
                       <Input
                         id="edit-checkpoint-name"
                         value={editableRegistration.checkpoint.name}
-                        onChange={(event) => updateCheckpointField('name', event.target.value)}
+                        onChange={(event) =>
+                          updateCheckpointField("name", event.target.value)
+                        }
                         placeholder="Colombo Main Facility"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="edit-checkpoint-address" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-checkpoint-address"
+                        className="text-sm font-medium"
+                      >
                         Street Address
                       </Label>
                       <Textarea
                         id="edit-checkpoint-address"
                         value={editableRegistration.checkpoint.address}
-                        onChange={(event) => updateCheckpointField('address', event.target.value)}
+                        onChange={(event) =>
+                          updateCheckpointField("address", event.target.value)
+                        }
                         placeholder="456 Factory Road, Industrial Zone"
                         rows={2}
                         className="resize-none"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-checkpoint-state" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-checkpoint-state"
+                        className="text-sm font-medium"
+                      >
                         State / Province
                       </Label>
                       <Input
                         id="edit-checkpoint-state"
                         value={editableRegistration.checkpoint.state}
-                        onChange={(event) => updateCheckpointField('state', event.target.value)}
+                        onChange={(event) =>
+                          updateCheckpointField("state", event.target.value)
+                        }
                         placeholder="Western Province"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-checkpoint-country" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-checkpoint-country"
+                        className="text-sm font-medium"
+                      >
                         Country
                       </Label>
                       <Input
                         id="edit-checkpoint-country"
                         value={editableRegistration.checkpoint.country}
-                        onChange={(event) => updateCheckpointField('country', event.target.value)}
+                        onChange={(event) =>
+                          updateCheckpointField("country", event.target.value)
+                        }
                         placeholder="Sri Lanka"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-checkpoint-latitude" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-checkpoint-latitude"
+                        className="text-sm font-medium"
+                      >
                         Latitude
                       </Label>
                       <Input
                         id="edit-checkpoint-latitude"
                         value={editableRegistration.checkpoint.latitude}
-                        onChange={(event) => updateCheckpointField('latitude', event.target.value)}
+                        onChange={(event) =>
+                          updateCheckpointField("latitude", event.target.value)
+                        }
                         placeholder="6.9271"
                         className="h-10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-checkpoint-longitude" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-checkpoint-longitude"
+                        className="text-sm font-medium"
+                      >
                         Longitude
                       </Label>
                       <Input
                         id="edit-checkpoint-longitude"
                         value={editableRegistration.checkpoint.longitude}
-                        onChange={(event) => updateCheckpointField('longitude', event.target.value)}
+                        onChange={(event) =>
+                          updateCheckpointField("longitude", event.target.value)
+                        }
                         placeholder="79.8612"
                         className="h-10"
                       />
@@ -838,56 +1002,94 @@ const handleSaveRegistration = async () => {
               {/* Advanced: Blockchain Data Card */}
               <Card className="border-dashed">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base text-muted-foreground">Advanced: Blockchain Data</CardTitle>
+                  <CardTitle className="text-base text-muted-foreground">
+                    Advanced: Blockchain Data
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-identification-public-key" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-identification-public-key"
+                        className="text-sm font-medium"
+                      >
                         Organization Public Key
                       </Label>
                       <Input
                         id="edit-identification-public-key"
                         value={editableRegistration.identification.publicKey}
-                        onChange={(event) => updateIdentificationField('publicKey', event.target.value)}
+                        onChange={(event) =>
+                          updateIdentificationField(
+                            "publicKey",
+                            event.target.value
+                          )
+                        }
                         placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
                         className="h-10 font-mono text-xs"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-metadata-public-key" className="text-sm font-medium">
+                      <Label
+                        htmlFor="edit-metadata-public-key"
+                        className="text-sm font-medium"
+                      >
                         Metadata Public Key
                       </Label>
                       <Input
                         id="edit-metadata-public-key"
                         value={editableRegistration.metadata.publicKey}
-                        onChange={(event) => updateMetadataField('publicKey', event.target.value)}
+                        onChange={(event) =>
+                          updateMetadataField("publicKey", event.target.value)
+                        }
                         placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
                         className="h-10 font-mono text-xs"
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="edit-smart-contract-role" className="text-sm font-medium">
+                        <Label
+                          htmlFor="edit-smart-contract-role"
+                          className="text-sm font-medium"
+                        >
                           Smart Contract Role
                         </Label>
                         <Input
                           id="edit-smart-contract-role"
-                          value={editableRegistration.metadata.smartContractRole}
-                          onChange={(event) => updateMetadataField('smartContractRole', event.target.value)}
+                          value={
+                            editableRegistration.metadata.smartContractRole
+                          }
+                          onChange={(event) =>
+                            updateMetadataField(
+                              "smartContractRole",
+                              event.target.value
+                            )
+                          }
                           placeholder="MANUFACTURER"
                           className="h-10"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="edit-date-of-registration" className="text-sm font-medium">
+                        <Label
+                          htmlFor="edit-date-of-registration"
+                          className="text-sm font-medium"
+                        >
                           Registration Date
                         </Label>
                         <Input
                           id="edit-date-of-registration"
                           type="date"
-                          value={editableRegistration.metadata.dateOfRegistration?.slice(0, 10) || ''}
-                          onChange={(event) => updateMetadataField('dateOfRegistration', event.target.value)}
+                          value={
+                            editableRegistration.metadata.dateOfRegistration?.slice(
+                              0,
+                              10
+                            ) || ""
+                          }
+                          onChange={(event) =>
+                            updateMetadataField(
+                              "dateOfRegistration",
+                              event.target.value
+                            )
+                          }
                           className="h-10"
                         />
                       </div>
@@ -899,10 +1101,18 @@ const handleSaveRegistration = async () => {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={handleCloseProfileDialog} disabled={isProfileSaving}>
+            <Button
+              variant="outline"
+              onClick={handleCloseProfileDialog}
+              disabled={isProfileSaving}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveRegistration} disabled={isProfileSaving} className="gap-2">
+            <Button
+              onClick={handleSaveRegistration}
+              disabled={isProfileSaving}
+              className="gap-2"
+            >
               {isProfileSaving ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -917,7 +1127,8 @@ const handleSaveRegistration = async () => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>    </div>
+      </Dialog>{" "}
+    </div>
   );
 };
 

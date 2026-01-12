@@ -38,8 +38,9 @@ import {
   Truck,
   XCircle,
   Package,
+  AlertCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/useAppToast";
 import { cn } from "@/lib/utils";
 import {
   handoverUtils,
@@ -49,6 +50,7 @@ import {
 import { shipmentService } from "@/services/shipmentService";
 import type { SupplierShipmentRecord, SupplierShipmentStatus } from "../types";
 import { ViewShipmentButton } from "./ViewShipmentButton";
+import { SegmentAcceptanceToast } from "@/components/toasts/SegmentAcceptanceToast";
 import { formatDistanceToNow } from "date-fns";
 
 const {
@@ -156,6 +158,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
 };
 
 export function SupplierSection() {
+  const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const shared = useHandoverSharedContext();
   const supplier = useSupplierContext();
   const canRender = supplier.enabled && shared.role === "SUPPLIER";
@@ -208,13 +211,13 @@ export function SupplierSection() {
     const isSecure = typeof window !== "undefined" && window.isSecureContext;
     if (!isSecure) {
       const msg = "Location access requires HTTPS or localhost.";
-      toast.error(msg);
+      showError(msg);
       setTakeoverLocating(false);
       setTakeoverLocationError(msg);
       return;
     }
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      toast.error("Geolocation is unavailable in this browser.");
+      showError("Geolocation is unavailable in this browser");
       setTakeoverLocating(false);
       setTakeoverLocationError("Geolocation unavailable");
       return;
@@ -234,7 +237,7 @@ export function SupplierSection() {
         const message = denied
           ? "Location permission denied. Allow access or enter coordinates manually."
           : "Unable to fetch your location. Allow location access and try again.";
-        toast.error(message);
+        showError(message);
         setTakeoverLocating(false);
         setTakeoverLocationError(message);
       },
@@ -260,16 +263,14 @@ export function SupplierSection() {
   };
 
   const handleDownloadProof = (shipment: SupplierShipmentRecord) => {
-    toast.info(
-      `Downloading records for segment ${getSegmentReference(shipment)} (demo).`
+    showInfo(
+      `Downloading records for segment ${getSegmentReference(shipment)}`
     );
   };
 
   const handleReportIssue = (shipment: SupplierShipmentRecord) => {
-    toast.info(
-      `Support has been notified about segment ${getSegmentReference(
-        shipment
-      )}.`
+    showInfo(
+      `Support has been notified about segment ${getSegmentReference(shipment)}`
     );
   };
 
@@ -278,7 +279,7 @@ export function SupplierSection() {
     const latitude = Number(takeoverForm.latitude);
     const longitude = Number(takeoverForm.longitude);
     if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast.error("Provide valid latitude and longitude values.");
+      showError("Provide valid latitude and longitude values");
       return;
     }
     try {
@@ -582,6 +583,7 @@ const SupplierShipmentActions = ({
   shipment,
   context,
 }: SupplierShipmentActionsProps) => {
+  const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const {
     supplier,
     sharedUuid,
@@ -671,54 +673,65 @@ const SupplierShipmentActions = ({
               segmentDetail?.estimatedArrivalDate || shipment.expectedArrival
             ).toLocaleString()
           : null;
-      const handleAccept = () => {
+      const handleAccept = async () => {
         if (isAccepting || !canAccept) return;
         setAcceptingSegmentId(segmentIdentifier);
-        shipmentService
-          .accept(String(segmentIdentifier))
-          .then(() => {
-            toast.success("Shipment accepted");
-            if (sharedUuid) {
-              queryClient.invalidateQueries({
-                queryKey: ["incomingShipments", sharedUuid],
-              });
-              supplier.statusOrder.forEach((status) =>
+        try {
+          await shipmentService.accept(String(segmentIdentifier));
+
+          // Show success toast
+          showSuccess("Segment accepted successfully");
+
+          // Invalidate and refetch all relevant queries immediately
+          if (sharedUuid) {
+            // Invalidate incoming shipments
+            await queryClient.invalidateQueries({
+              queryKey: ["incomingShipments", sharedUuid],
+            });
+
+            // Invalidate all supplier segment statuses
+            await Promise.all(
+              supplier.statusOrder.map((status) =>
                 queryClient.invalidateQueries({
                   queryKey: ["supplierSegments", sharedUuid, status],
                 })
-              );
-              // Force the active tab to refetch so the card disappears immediately
-              queryClient.refetchQueries({
-                queryKey: [
-                  "supplierSegments",
-                  sharedUuid,
-                  supplier.activeStatus,
-                ],
-                type: "active",
-              });
-            } else {
-              queryClient.invalidateQueries({ queryKey: ["incomingShipments"] });
-              queryClient.invalidateQueries({ queryKey: ["supplierSegments"] });
-            }
-            setAcceptDialogSegmentId(null);
-          })
-          .catch((error) => {
-            console.error(error);
-            const message =
-              typeof error === "object" &&
-              error !== null &&
-              "response" in error &&
-              typeof (error as { response?: { data?: { error?: string } } })
-                .response?.data?.error === "string"
-                ? (error as { response?: { data?: { error?: string } } })
-                    .response?.data?.error
-              : "Failed to accept shipment";
-            toast.error(message);
-          })
-          .finally(() => {
-            setAcceptingSegmentId(null);
-            setAcceptDialogSegmentId(null);
-          });
+              )
+            );
+
+            // Force immediate refetch of active tab
+            await queryClient.refetchQueries({
+              queryKey: ["supplierSegments", sharedUuid, supplier.activeStatus],
+            });
+          } else {
+            // Fallback if no UUID
+            await queryClient.invalidateQueries({
+              queryKey: ["incomingShipments"],
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ["supplierSegments"],
+            });
+            await queryClient.refetchQueries({
+              queryKey: ["supplierSegments"],
+            });
+          }
+
+          setAcceptDialogSegmentId(null);
+        } catch (error) {
+          console.error("Segment acceptance error:", error);
+          const message =
+            typeof error === "object" &&
+            error !== null &&
+            "response" in error &&
+            typeof (error as { response?: { data?: { error?: string } } })
+              .response?.data?.error === "string"
+              ? (error as { response?: { data?: { error?: string } } }).response
+                  ?.data?.error
+              : "Please try again";
+          showError(message);
+        } finally {
+          setAcceptingSegmentId(null);
+          setAcceptDialogSegmentId(null);
+        }
       };
       return (
         <AlertDialog open={dialogOpen} onOpenChange={handleDialogChange}>
@@ -1156,7 +1169,7 @@ function SupplierHandoverDialog() {
 
   const requestHandoverLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      toast.error("Geolocation is unavailable in this browser.");
+      showError("Geolocation is unavailable in this browser");
       setHandoverLocationError("Geolocation unavailable");
       return;
     }
@@ -1174,8 +1187,8 @@ function SupplierHandoverDialog() {
       },
       (error) => {
         console.error(error);
-        toast.error(
-          "Unable to fetch your location. Allow location access and try again."
+        showError(
+          "Unable to fetch your location. Allow location access and try again"
         );
         setHandoverLocating(false);
         setHandoverLocationError("Location access denied or unavailable");

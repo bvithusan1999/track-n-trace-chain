@@ -13,7 +13,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/useAppToast";
 import { useAppStore } from "@/lib/store";
 import {
   checkpointService,
@@ -173,9 +173,11 @@ const extractApiErrorMessage = (error: unknown): string | undefined => {
   }
 
   if ("response" in error) {
-    const response = (error as {
-      response?: { data?: { error?: unknown; message?: unknown } };
-    }).response;
+    const response = (
+      error as {
+        response?: { data?: { error?: unknown; message?: unknown } };
+      }
+    ).response;
     const apiError = response?.data?.error;
     if (typeof apiError === "string") {
       return apiError;
@@ -515,6 +517,7 @@ export const HandoverProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const { role, uuid, user } = useAppStore();
   const queryClient = useQueryClient();
 
@@ -543,11 +546,8 @@ export const HandoverProvider = ({
             cursor: pageParam ?? undefined,
             limit: 20,
           }),
-        getNextPageParam: (lastPage: any) =>
-          lastPage?.cursor ?? null,
-        enabled:
-          Boolean(uuid) &&
-          (role === "SUPPLIER" || role === "WAREHOUSE"),
+        getNextPageParam: (lastPage: any) => lastPage?.cursor ?? null,
+        enabled: Boolean(uuid) && (role === "SUPPLIER" || role === "WAREHOUSE"),
         select: (payload: any) => ({
           segments: Array.isArray(payload?.segments)
             ? payload.segments.map(segmentToSupplierShipment)
@@ -678,7 +678,7 @@ export const HandoverProvider = ({
   const createShipment = useMutation({
     mutationFn: shipmentService.create,
     onSuccess: () => {
-      toast.success("Shipment created");
+      showSuccess("Shipment created successfully");
       setDestUUID("");
       resetPackageSelections();
       resetLegs();
@@ -695,7 +695,7 @@ export const HandoverProvider = ({
           ? (error as { response?: { data?: { error?: string } } }).response
               ?.data?.error
           : undefined;
-      toast.error(message || "Failed to create shipment");
+      showError(message || "Failed to create shipment");
     },
   });
 
@@ -721,17 +721,17 @@ export const HandoverProvider = ({
         }));
 
       if (shipmentItems.length === 0) {
-        toast.error("Select at least one package");
+        showError("Select at least one package");
         return;
       }
 
       if (!destUUID.trim()) {
-        toast.error("Select a destination party from the dropdown");
+        showError("Select a destination party from the dropdown");
         return;
       }
 
       if (!uuid) {
-        toast.error("Missing manufacturer identifier");
+        showError("Missing manufacturer identifier");
         return;
       }
 
@@ -763,7 +763,7 @@ export const HandoverProvider = ({
         }));
 
       if (checkpointsPayload.length === 0) {
-        toast.error("Add at least one route checkpoint leg");
+        showError("Add at least one route checkpoint leg");
         return;
       }
 
@@ -790,7 +790,7 @@ export const HandoverProvider = ({
       setAcceptingShipmentId(shipmentId);
     },
     onSuccess: () => {
-      toast.success("Shipment accepted");
+      // WebSocket notification will handle the toast, no manual toast needed
       queryClient.invalidateQueries({ queryKey: ["incomingShipments", uuid] });
       SUPPLIER_STATUS_ORDER.forEach((status) =>
         queryClient.invalidateQueries({
@@ -807,8 +807,8 @@ export const HandoverProvider = ({
           ?.data?.error === "string"
           ? (error as { response?: { data?: { error?: string } } }).response
               ?.data?.error
-          : undefined;
-      toast.error(message || "Failed to accept shipment");
+          : "Please try again";
+      showError(message || "Failed to accept shipment");
     },
     onSettled: () => {
       setAcceptingShipmentId(null);
@@ -822,7 +822,7 @@ export const HandoverProvider = ({
       setTakeoverSegmentId(segmentId);
     },
     onSuccess: () => {
-      toast.success("Segment taken over");
+      showSuccess("Segment taken over successfully");
       SUPPLIER_STATUS_ORDER.forEach((status) =>
         queryClient.invalidateQueries({
           queryKey: ["supplierSegments", uuid, status],
@@ -846,20 +846,20 @@ export const HandoverProvider = ({
 
   const submitHandover = useCallback(async () => {
     if (!handoverTarget) {
-      toast.error("Select a segment to hand over.");
+      showError("Select a segment to hand over");
       return;
     }
 
     const segmentIdentifier = handoverTarget.segmentId ?? handoverTarget.id;
     if (!segmentIdentifier) {
-      toast.error("Unable to determine segment for handover.");
+      showError("Unable to determine segment for handover");
       return;
     }
 
     const latitude = Number(handoverForm.latitude);
     const longitude = Number(handoverForm.longitude);
     if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast.error("Provide valid latitude and longitude coordinates.");
+      showError("Provide valid latitude and longitude coordinates");
       return;
     }
 
@@ -869,7 +869,7 @@ export const HandoverProvider = ({
         latitude,
         longitude,
       });
-      toast.success("Handover completed.");
+      showSuccess("Handover completed");
       setHandoverDialogOpen(false);
       setHandoverTarget(null);
       resetHandoverForm();
@@ -898,9 +898,14 @@ export const HandoverProvider = ({
 
   const loadingByStatus = useMemo(() => {
     return SUPPLIER_STATUS_ORDER.reduce((acc, status) => {
-      acc[status] = status === activeSupplierStatus
-        ? Boolean(activeQuery?.isLoading || activeQuery?.isFetching || activeQuery?.isPending)
-        : false;
+      acc[status] =
+        status === activeSupplierStatus
+          ? Boolean(
+              activeQuery?.isLoading ||
+                activeQuery?.isFetching ||
+                activeQuery?.isPending
+            )
+          : false;
       return acc;
     }, {} as Record<SupplierShipmentStatus, boolean>);
   }, [activeQuery, activeSupplierStatus]);

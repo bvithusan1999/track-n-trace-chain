@@ -1,22 +1,29 @@
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { QRScanner } from '@/components/qr/QRScanner';
-import { Badge } from '@/components/ui/badge';
-import { QrCode, ArrowRight, Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { useAppStore } from '@/lib/store';
-import { toast } from '@/hooks/use-toast';
-import type { ProductMeta } from '@/types';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { QRScanner } from "@/components/qr/QRScanner";
+import { Badge } from "@/components/ui/badge";
+import { QrCode, ArrowRight, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useAppStore } from "@/lib/store";
+import { useAppToast } from "@/hooks/useAppToast";
+import type { ProductMeta } from "@/types";
 
 const handoverSchema = z.object({
-  productId: z.string().min(1, 'Product ID is required'),
-  toAddress: z.string().min(1, 'Recipient address is required'),
+  productId: z.string().min(1, "Product ID is required"),
+  toAddress: z.string().min(1, "Recipient address is required"),
   checkpoint: z.string().optional(),
   note: z.string().optional(),
 });
@@ -31,73 +38,64 @@ interface HandoverFormProps {
 export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
   const [showScanner, setShowScanner] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductMeta | null>(null);
-  
+  const [selectedProduct, setSelectedProduct] = useState<ProductMeta | null>(
+    null
+  );
+
   const { products, user, updateProduct } = useAppStore();
+  const { showSuccess, showError } = useAppToast();
 
   const form = useForm<HandoverFormData>({
     resolver: zodResolver(handoverSchema),
     defaultValues: {
-      productId: '',
-      toAddress: '',
-      checkpoint: '',
-      note: '',
+      productId: "",
+      toAddress: "",
+      checkpoint: "",
+      note: "",
     },
   });
 
   const handleScan = (scannedData: string) => {
     // Extract product ID from QR data (assuming format: product://[id])
-    const productId = scannedData.replace('product://', '');
-    form.setValue('productId', productId);
-    
+    const productId = scannedData.replace("product://", "");
+    form.setValue("productId", productId);
+
     // Find product by ID
-    const product = products.find(p => p.id === productId);
+    const product = products.find((p) => p.id === productId);
     setSelectedProduct(product || null);
-    
+
     setShowScanner(false);
-    
+
     if (!product) {
-      toast({
-        title: "Product Not Found",
-        description: `No product found with ID: ${productId}`,
-        variant: "destructive"
-      });
+      showError(`Product not found with ID: ${productId}`);
     }
   };
 
   const handleFormSubmit = async (data: HandoverFormData) => {
     setIsSubmitting(true);
-    
+
     try {
       // Mock blockchain transaction
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // Update product status
       if (selectedProduct) {
         updateProduct(selectedProduct.id, {
-          status: 'IN_TRANSIT',
-          currentHolder: data.toAddress as `0x${string}`
+          status: "IN_TRANSIT",
+          currentHolder: data.toAddress as `0x${string}`,
         });
       }
-      
-      toast({
-        title: "Handover Completed",
-        description: `Product ${data.productId} transferred successfully`,
-      });
-      
+
+      showSuccess("Handover completed");
+
       // Reset form
       form.reset();
       setSelectedProduct(null);
-      
+
       // Call external handler if provided
       onSubmit?.(data);
-      
     } catch (error) {
-      toast({
-        title: "Handover Failed",
-        description: "Failed to complete the handover transaction",
-        variant: "destructive"
-      });
+      showError("Failed to complete the handover transaction");
     } finally {
       setIsSubmitting(false);
     }
@@ -114,7 +112,10 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit(handleFormSubmit)}
+              className="space-y-6"
+            >
               {/* Product ID Field */}
               <FormField
                 control={form.control}
@@ -124,12 +125,14 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
                     <FormLabel>Product ID</FormLabel>
                     <div className="flex gap-2">
                       <FormControl>
-                        <Input 
-                          placeholder="Enter product ID" 
-                          {...field} 
+                        <Input
+                          placeholder="Enter product ID"
+                          {...field}
                           onChange={(e) => {
                             field.onChange(e);
-                            const product = products.find(p => p.id === e.target.value);
+                            const product = products.find(
+                              (p) => p.id === e.target.value
+                            );
                             setSelectedProduct(product || null);
                           }}
                         />
@@ -156,10 +159,13 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
                     <h4 className="font-medium">{selectedProduct.name}</h4>
                     <Badge variant="secondary">{selectedProduct.status}</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">Batch: {selectedProduct.batchNumber}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Batch: {selectedProduct.batchNumber}
+                  </p>
                   {selectedProduct.currentHolder && (
                     <p className="text-sm text-muted-foreground">
-                      Current Holder: {selectedProduct.currentHolder.slice(0, 8)}...
+                      Current Holder:{" "}
+                      {selectedProduct.currentHolder.slice(0, 8)}...
                     </p>
                   )}
                 </div>
@@ -173,10 +179,7 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
                   <FormItem>
                     <FormLabel>Recipient Address</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="0x..." 
-                        {...field}
-                      />
+                      <Input placeholder="0x..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -191,8 +194,8 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
                   <FormItem>
                     <FormLabel>Checkpoint (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g., Warehouse A, Port Terminal" 
+                      <Input
+                        placeholder="e.g., Warehouse A, Port Terminal"
                         {...field}
                       />
                     </FormControl>
@@ -209,7 +212,7 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
                   <FormItem>
                     <FormLabel>Notes (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Add any notes about this handover..."
                         rows={3}
                         {...field}
@@ -221,8 +224,8 @@ export const HandoverForm = ({ onSubmit, className }: HandoverFormProps) => {
               />
 
               {/* Submit Button */}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full gap-2"
                 disabled={isSubmitting || !selectedProduct}
               >

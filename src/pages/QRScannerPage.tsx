@@ -21,7 +21,7 @@ import { AlertTriangle, Loader2, ScanLine, ShieldCheck } from "lucide-react";
 import { api } from "@/services/api";
 import { batchService } from "@/services/batchService";
 import { PackageStatusDisplay } from "@/components/package/PackageStatusDisplay";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/useAppToast";
 
 type PackageStatusResponse = {
   package?: {
@@ -280,6 +280,7 @@ const getDeviceCoordinates = () =>
   });
 
 export default function QRScannerPage() {
+  const { showWarning } = useAppToast();
   const [scannerOpen, setScannerOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -311,11 +312,10 @@ export default function QRScannerPage() {
         locationCheck.status !== "OK" &&
         locationCheck.status !== "NO_DEVICE_COORDS"
       ) {
-        toast.warning("Location verification warning", {
-          description:
-            locationCheck.warning ??
-            "Device location does not match the package GPS range.",
-        });
+        showWarning(
+          locationCheck.warning ??
+            "Device location does not match the package GPS range"
+        );
       }
     } catch (error) {
       console.error("Failed to submit QR payload", error);
