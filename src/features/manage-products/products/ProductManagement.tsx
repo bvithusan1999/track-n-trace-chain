@@ -198,7 +198,6 @@ export function ProductManagement() {
                   <TableHead>Product</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Temperature range</TableHead>
-                  <TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -214,9 +213,6 @@ export function ProductManagement() {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
@@ -266,7 +262,6 @@ export function ProductManagement() {
                 <TableHead>Product</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Temperature range</TableHead>
-                <TableHead>Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -292,7 +287,6 @@ export function ProductManagement() {
                     </TableCell>
                     <TableCell>{categoryLabel}</TableCell>
                     <TableCell>{tempLabel}</TableCell>
-                    <TableCell>{formatDateTime(product.updatedAt)}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button

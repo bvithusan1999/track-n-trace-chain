@@ -115,7 +115,7 @@ const formatTemp = (val?: string) => {
   if (!val) return "N/A";
   // remove non-numeric characters (e.g. trailing 'C') and keep sign/decimal
   const n = String(val).replace(/[^0-9.-]/g, "");
-  return n ? `${n}°C` : "N/A";
+  return n ? `${Number(n).toFixed(2)}°C` : "N/A";
 };
 
 const getBreachSeverity = (breachType?: string): "critical" | "warning" => {
