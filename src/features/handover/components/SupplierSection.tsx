@@ -156,6 +156,88 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   },
 };
 
+const extractApiErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  if ("response" in error) {
+    const response = (
+      error as { response?: { data?: { error?: unknown; message?: unknown } } }
+    ).response;
+    const apiError = response?.data?.error;
+    if (typeof apiError === "string") {
+      return apiError;
+    }
+    if (apiError && typeof apiError === "object") {
+      const message = (apiError as { message?: unknown }).message;
+      if (typeof message === "string") {
+        return message;
+      }
+    }
+    const fallbackMessage = response?.data?.message;
+    if (typeof fallbackMessage === "string") {
+      return fallbackMessage;
+    }
+  }
+
+  if ("message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return undefined;
+};
+
+const buildRangePopupMessage = (
+  message: string,
+  actionLabel: "takeover" | "handover"
+): string | null => {
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("origin checkpoint") ||
+    lower.includes("pickup checkpoint")
+  ) {
+    return `Your current location is outside the permitted range for this checkpoint. Please move closer to the pickup checkpoint and try ${actionLabel} again.`;
+  }
+
+  if (
+    lower.includes("destination checkpoint") ||
+    lower.includes("delivery checkpoint")
+  ) {
+    return `Your current location is outside the permitted range for this checkpoint. Please move closer to the delivery checkpoint and try ${actionLabel} again.`;
+  }
+
+  if (
+    lower.includes("latest device gps reading") ||
+    lower.includes("latest shipment gps reading") ||
+    lower.includes("device gps") ||
+    lower.includes("shipment gps")
+  ) {
+    return "Your current location is outside the permitted range. Please move closer to the package location and try handover again.";
+  }
+
+  if (lower.includes("no gps sensor readings")) {
+    return "Device GPS data missing. Make sure the device is online and sending GPS data.";
+  }
+
+  if (lower.includes("gps reading has invalid coordinates")) {
+    return "Device GPS data invalid. The latest GPS reading is missing coordinates.";
+  }
+
+  if (
+    lower.includes("location is not within") ||
+    lower.includes("shipment_segment_access_denied")
+  ) {
+    return "Your location is too far from the checkpoint. Please move closer.";
+  }
+
+  return null;
+};
+
 export function SupplierSection() {
   const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const shared = useHandoverSharedContext();
@@ -173,6 +255,8 @@ export function SupplierSection() {
   const [takeoverLocationError, setTakeoverLocationError] = useState<
     string | null
   >(null);
+  const [takeoverError, setTakeoverError] = useState<string | null>(null);
+  const [takeoverErrorDialogOpen, setTakeoverErrorDialogOpen] = useState(false);
   const [acceptDialogSegmentId, setAcceptDialogSegmentId] = useState<
     string | null
   >(null);
@@ -251,6 +335,7 @@ export function SupplierSection() {
     setTakeoverForm({ latitude: "", longitude: "" });
     setTakeoverLocating(false);
     setTakeoverLocationError(null);
+    setTakeoverError(null);
   };
 
   const handleTakeoverDialogChange = (open: boolean) => {
@@ -281,6 +366,7 @@ export function SupplierSection() {
       showError("Provide valid latitude and longitude values");
       return;
     }
+
     try {
       await supplier.takeoverSegment(
         String(getSegmentReference(takeoverTarget)),
@@ -290,8 +376,27 @@ export function SupplierSection() {
         }
       );
       closeTakeoverDialog();
-    } catch {
-      // errors handled via context mutation toast
+    } catch (err: unknown) {
+      closeTakeoverDialog();
+      // Check if it's a location-based access denied error
+      const errorMessage =
+        extractApiErrorMessage(err) ||
+        (typeof err === "object" && err !== null && "message" in err
+          ? (err as { message?: unknown }).message
+          : JSON.stringify(err || ""));
+      const popupMessage = buildRangePopupMessage(
+        typeof errorMessage === "string" ? errorMessage : String(errorMessage),
+        "takeover"
+      );
+      if (popupMessage) {
+        // Then show the error popup
+        setTakeoverError(popupMessage);
+        setTakeoverErrorDialogOpen(true);
+        // Don't rethrow - we've handled it with the popup
+        return;
+      }
+      // For other errors, rethrow so context's onError can show toast
+      throw err;
     }
   };
 
@@ -439,6 +544,36 @@ export function SupplierSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Location Access Denied Error Dialog */}
+      <AlertDialog
+        open={takeoverErrorDialogOpen}
+        onOpenChange={setTakeoverErrorDialogOpen}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader className="gap-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <AlertDialogTitle className="text-lg">
+                  Location Verification Failed
+                </AlertDialogTitle>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm text-destructive">
+            {takeoverError}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => setTakeoverErrorDialogOpen(false)}
+            >
+              Close
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1168,6 +1303,8 @@ function SupplierHandoverDialog() {
   const [handoverLocationError, setHandoverLocationError] = useState<
     string | null
   >(null);
+  const [handoverError, setHandoverError] = useState<string | null>(null);
+  const [handoverErrorDialogOpen, setHandoverErrorDialogOpen] = useState(false);
 
   const coordsMissing =
     supplier.handoverForm.latitude.trim().length === 0 ||
@@ -1214,78 +1351,129 @@ function SupplierHandoverDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplier.handoverDialogOpen, supplier.enabled]);
 
+  const handleConfirmHandover = async () => {
+    try {
+      await supplier.submitHandover();
+    } catch (err) {
+      const errorMessage =
+        extractApiErrorMessage(err) ||
+        (err as { message?: unknown })?.message ||
+        JSON.stringify(err || "");
+      const popupMessage = buildRangePopupMessage(
+        typeof errorMessage === "string" ? errorMessage : String(errorMessage),
+        "handover"
+      );
+      if (popupMessage) {
+        supplier.setHandoverDialogOpen(false);
+        setHandoverError(popupMessage);
+        setHandoverErrorDialogOpen(true);
+      }
+    }
+  };
+
   if (!supplier.enabled) return null;
 
   return (
-    <Dialog
-      open={supplier.handoverDialogOpen}
-      onOpenChange={supplier.setHandoverDialogOpen}
-    >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Handover shipment</DialogTitle>
-          <DialogDescription>
-            Your current location will be attached to finalize this handover.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={supplier.handoverDialogOpen}
+        onOpenChange={supplier.setHandoverDialogOpen}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Handover shipment</DialogTitle>
+            <DialogDescription>
+              Your current location will be attached to finalize this handover.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <p className="text-sm text-muted-foreground">
-            Browser location is requested automatically; the coordinates are
-            sent with this handover.
-          </p>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Location status</label>
-            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
-              {handoverLocating ? (
-                <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <div className="grid gap-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Browser location is requested automatically; the coordinates are
+              sent with this handover.
+            </p>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Location status</label>
+              <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+                {handoverLocating ? (
+                  <span className="inline-flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Fetching your GPS location...
+                  </span>
+                ) : handoverLocationError ? (
+                  <span className="text-destructive">
+                    {handoverLocationError}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Location captured and ready to send.
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                If permission is blocked, enable location in your browser and
+                reopen this dialog.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => supplier.setHandoverDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmHandover}
+              disabled={
+                supplier.handoverLoading ||
+                handoverLocating ||
+                handoverLocationError !== null ||
+                coordsMissing
+              }
+            >
+              {supplier.handoverLoading ? (
+                <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Fetching your GPS location...
-                </span>
-              ) : handoverLocationError ? (
-                <span className="text-destructive">
-                  {handoverLocationError}
+                  Submitting...
                 </span>
               ) : (
-                <span className="text-muted-foreground">
-                  Location captured and ready to send.
-                </span>
+                "Confirm handover"
               )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              If permission is blocked, enable location in your browser and
-              reopen this dialog.
-            </p>
-          </div>
-        </div>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter className="gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => supplier.setHandoverDialogOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={supplier.submitHandover}
-            disabled={
-              supplier.handoverLoading ||
-              handoverLocating ||
-              handoverLocationError !== null ||
-              coordsMissing
-            }
-          >
-            {supplier.handoverLoading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting...
-              </span>
-            ) : (
-              "Confirm handover"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <AlertDialog
+        open={handoverErrorDialogOpen}
+        onOpenChange={setHandoverErrorDialogOpen}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader className="gap-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <AlertDialogTitle className="text-lg">
+                  Location Verification Failed
+                </AlertDialogTitle>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm text-destructive">
+            {handoverError}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => setHandoverErrorDialogOpen(false)}
+            >
+              Close
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -214,26 +214,31 @@ const extractRangeKmLabel = (message: string): string | null => {
 
 const buildRangeToastContent = (message: string): RangeToastContent | null => {
   const lower = message.toLowerCase();
-  const rangeLabel = extractRangeKmLabel(message) ?? "the required range";
 
   if (lower.includes("origin checkpoint")) {
     return {
-      title: "Too far from pickup checkpoint",
-      description: `Move within ${rangeLabel} of the pickup checkpoint and try takeover again.`,
+      title: "Location Verification Failed",
+      description:
+        "Your current location is outside the permitted range. Move closer to the pickup checkpoint and try takeover again.",
     };
   }
 
   if (lower.includes("destination checkpoint")) {
     return {
-      title: "Too far from delivery checkpoint",
-      description: `Move within ${rangeLabel} of the delivery checkpoint and try handover again.`,
+      title: "Location Verification Failed",
+      description:
+        "Your current location is outside the permitted range. Move closer to the delivery checkpoint and try handover again.",
     };
   }
 
-  if (lower.includes("latest device gps reading")) {
+  if (
+    lower.includes("latest device gps reading") ||
+    lower.includes("latest shipment gps reading")
+  ) {
     return {
-      title: "Device location mismatch",
-      description: `Your current location must be within ${rangeLabel} of the latest device GPS reading.`,
+      title: "Location Verification Failed",
+      description:
+        "Your current location is outside the permitted range. Move closer to the package location and try handover again.",
     };
   }
 
@@ -254,21 +259,6 @@ const buildRangeToastContent = (message: string): RangeToastContent | null => {
   }
 
   return null;
-};
-
-const showSegmentErrorToast = (error: unknown, fallback: string) => {
-  const message = extractApiErrorMessage(error);
-  if (message) {
-    const rangeToast = buildRangeToastContent(message);
-    if (rangeToast) {
-      toast.error(rangeToast.title, { description: rangeToast.description });
-      return;
-    }
-    toast.error(message);
-    return;
-  }
-
-  toast.error(fallback);
 };
 
 const mapSegmentStatusToSupplierTab = (
@@ -520,6 +510,21 @@ export const HandoverProvider = ({
   const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const { role, uuid, user } = useAppStore();
   const queryClient = useQueryClient();
+
+  const showSegmentErrorToast = (error: unknown, fallback: string) => {
+    const message = extractApiErrorMessage(error);
+    if (message) {
+      const rangeToast = buildRangeToastContent(message);
+      if (rangeToast) {
+        showError(rangeToast.title, { description: rangeToast.description });
+        return;
+      }
+      showError(message);
+      return;
+    }
+
+    showError(fallback);
+  };
 
   const { data: incoming = [], isLoading: loadingIncoming } = useQuery<
     ShipmentSegmentResponse[],
@@ -830,6 +835,7 @@ export const HandoverProvider = ({
       );
     },
     onError: (error: unknown) => {
+      // Keep toast for all errors; SupplierSection will also show a popup for range errors.
       showSegmentErrorToast(error, "Failed to take over segment");
     },
     onSettled: () => {
@@ -882,6 +888,7 @@ export const HandoverProvider = ({
     } catch (error) {
       console.error(error);
       showSegmentErrorToast(error, "Failed to submit handover details.");
+      throw error;
     } finally {
       setHandoverLoading(false);
     }

@@ -11,7 +11,8 @@ import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import CreateProduct from "./pages/CreateProduct";
 import Handover from "./pages/Handover";
-import Alerts from "./pages/Alerts";
+import ManufacturerAlertsPage from "./pages/ManufacturerAlertsPage";
+import SupplierAlertsPage from "./pages/SupplierAlertsPage";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -74,7 +75,7 @@ const App = () => {
                   <Route path="products/create" element={<CreateProduct />} />
                   <Route path="products/:id" element={<ProductDetail />} />
                   <Route path="shipment" element={<Handover />} />
-                  <Route path="alerts" element={<Alerts />} />
+                  <Route path="alerts" element={<ManufacturerAlertsPage />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="qr-scan" element={<QRScannerPage />} />
@@ -88,6 +89,7 @@ const App = () => {
                   <Route path="register" element={<Register />} />
                   <Route path="shipment" element={<Handover />} />
                   <Route path="products" element={<Products />} />
+                  <Route path="alerts" element={<SupplierAlertsPage />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="qr-scan" element={<QRScannerPage />} />
                 </>
