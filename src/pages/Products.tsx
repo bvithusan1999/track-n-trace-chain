@@ -8,16 +8,23 @@ import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useAppToast } from "@/hooks/useAppToast";
 
 const filterBySearch = (products: Product[], term: string) => {
   const query = term.toLowerCase();
   if (!query) return products;
 
   return products.filter((product) => {
-    const categoryName = product.productCategory?.name ?? product.productCategoryName ?? "";
+    const categoryName =
+      product.productCategory?.name ?? product.productCategoryName ?? "";
     return (
       product.productName.toLowerCase().includes(query) ||
       categoryName.toLowerCase().includes(query)
@@ -28,22 +35,26 @@ const filterBySearch = (products: Product[], term: string) => {
 export default function Products() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showSuccess } = useAppToast();
   const { user } = useAppStore();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  const { data: categories = [], isLoading: loadingCategories } = useQuery<ProductCategory[]>({
+  const { data: categories = [], isLoading: loadingCategories } = useQuery<
+    ProductCategory[]
+  >({
     queryKey: ["productCategories"],
     queryFn: () => productCategoryService.list(),
   });
 
-  const { data: products = [], isLoading: loadingProducts } = useQuery<Product[]>({
+  const { data: products = [], isLoading: loadingProducts } = useQuery<
+    Product[]
+  >({
     queryKey: ["products", categoryFilter],
     queryFn: () =>
       productRegistryService.getAllProducts(
-        categoryFilter ? { categoryId: categoryFilter } : undefined,
+        categoryFilter ? { categoryId: categoryFilter } : undefined
       ),
   });
 
@@ -53,12 +64,12 @@ export default function Products() {
         acc[category.id] = category.name;
         return acc;
       }, {}),
-    [categories],
+    [categories]
   );
 
   const filteredProducts = useMemo(
     () => filterBySearch(products, searchTerm.trim()),
-    [products, searchTerm],
+    [products, searchTerm]
   );
 
   const handleRefresh = async () => {
@@ -66,7 +77,7 @@ export default function Products() {
       queryClient.invalidateQueries({ queryKey: ["products"] }),
       queryClient.invalidateQueries({ queryKey: ["productCategories"] }),
     ]);
-    toast({ title: "Product list refreshed" });
+    showSuccess("Product list refreshed");
   };
 
   const handleCategoryFilterChange = (value: string) => {
@@ -82,7 +93,8 @@ export default function Products() {
           <div>
             <h1 className="text-3xl font-bold">Products</h1>
             <p className="text-muted-foreground">
-              Browse registered products, filter by category, and review handling requirements.
+              Browse registered products, filter by category, and review
+              handling requirements.
             </p>
           </div>
           <div className="flex gap-2">
@@ -90,7 +102,10 @@ export default function Products() {
               Refresh
             </Button>
             {user?.role === "MANUFACTURER" && (
-              <Button className="gap-2" onClick={() => navigate("/products/create")}>
+              <Button
+                className="gap-2"
+                onClick={() => navigate("/products/create")}
+              >
                 <Plus className="h-4 w-4" />
                 Create Product
               </Button>
@@ -120,7 +135,10 @@ export default function Products() {
                   Loading categories...
                 </div>
               ) : (
-                <Select value={categorySelectValue} onValueChange={handleCategoryFilterChange}>
+                <Select
+                  value={categorySelectValue}
+                  onValueChange={handleCategoryFilterChange}
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
@@ -158,28 +176,47 @@ export default function Products() {
             {filteredProducts.map((product) => (
               <Card key={product.id} className="border border-border/60">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{product.productName}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {product.productName}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div>
-                    <p className="text-muted-foreground text-xs uppercase">Category</p>
+                    <p className="text-muted-foreground text-xs uppercase">
+                      Category
+                    </p>
                     <p className="font-medium">
-                      {product.productCategory?.name ?? product.productCategoryName ?? categoryLookup[product.productCategoryId] ?? "-"}
+                      {product.productCategory?.name ??
+                        product.productCategoryName ??
+                        categoryLookup[product.productCategoryId] ??
+                        "-"}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <p className="text-muted-foreground text-xs uppercase">Start Temp</p>
-                      <p className="font-medium">{product.requiredStartTemp ?? "-"}</p>
+                      <p className="text-muted-foreground text-xs uppercase">
+                        Start Temp
+                      </p>
+                      <p className="font-medium">
+                        {product.requiredStartTemp ?? "-"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-xs uppercase">End Temp</p>
-                      <p className="font-medium">{product.requiredEndTemp ?? "-"}</p>
+                      <p className="text-muted-foreground text-xs uppercase">
+                        End Temp
+                      </p>
+                      <p className="font-medium">
+                        {product.requiredEndTemp ?? "-"}
+                      </p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs uppercase">Handling Instructions</p>
-                    <p className="font-medium whitespace-pre-wrap">{product.handlingInstructions ?? "-"}</p>
+                    <p className="text-muted-foreground text-xs uppercase">
+                      Handling Instructions
+                    </p>
+                    <p className="font-medium whitespace-pre-wrap">
+                      {product.handlingInstructions ?? "-"}
+                    </p>
                   </div>
                 </CardContent>
               </Card>

@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, LogOut, Copy, Check, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { isFakeMode } from '@/lib/web3/config';
-import { toast } from '@/hooks/use-toast';
+import { useAppToast } from '@/hooks/useAppToast';
 
 export const WalletConnectButton = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { showSuccess, showError } = useAppToast();
   const { 
     walletAddress, 
     isConnected, 
@@ -43,24 +44,13 @@ export const WalletConnectButton = () => {
           });
         }
         
-        toast({
-          title: "Wallet Connected (Demo)",
-          description: "Connected to mock wallet for demo purposes",
-        });
+        showSuccess("Wallet connected");
       } else {
         // TODO: Implement real WalletConnect
-        toast({
-          title: "WalletConnect",
-          description: "Real wallet connection not implemented yet",
-          variant: "destructive"
-        });
+        showError("Real wallet connection not implemented yet");
       }
     } catch (error) {
-      toast({
-        title: "Connection Failed",
-        description: "Failed to connect wallet",
-        variant: "destructive"
-      });
+      showError("Failed to connect wallet");
     } finally {
       setIsConnecting(false);
     }
@@ -69,10 +59,7 @@ export const WalletConnectButton = () => {
   const handleDisconnect = () => {
     setWalletConnection(null);
     setUser(null);
-    toast({
-      title: "Wallet Disconnected",
-      description: "Successfully disconnected from wallet",
-    });
+    showSuccess("Wallet disconnected");
   };
 
   const handleCopyAddress = async () => {
@@ -80,10 +67,7 @@ export const WalletConnectButton = () => {
       await navigator.clipboard.writeText(walletAddress);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({
-        title: "Address Copied",
-        description: "Wallet address copied to clipboard",
-      });
+      showSuccess("Address copied");
     }
   };
 

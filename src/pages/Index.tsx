@@ -1,15 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
+import { ShipmentDetailsDialog } from "@/components/shipment/ShipmentDetailsDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAppStore } from "@/lib/store";
 import {
   mockProducts,
@@ -28,7 +29,7 @@ import {
 } from "@/lib/mock-data";
 import type { Alert, Shipment } from "@/types";
 import type { SupplierShipmentRecord } from "@/features/handover/types";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowUpRight,
   MapPin,
@@ -66,8 +67,8 @@ const Index = () => {
 
   // Initialize mock data (for demo)
   useEffect(() => {
-    if (!user) {
-      setUser(mockUsers[0]); // Default manufacturer
+    if (!user && !persistedRole) {
+      setUser(mockUsers[0]); // Default manufacturer (demo only)
     }
 
     if (products.length === 0) {
@@ -81,6 +82,7 @@ const Index = () => {
     }
   }, [
     user,
+    persistedRole,
     products.length,
     shipments.length,
     setUser,
@@ -121,10 +123,26 @@ const ManufacturerDashboard = ({
   shipments,
   navigate,
 }: ManufacturerDashboardProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
+
+  // Handle shipmentId from query param
+  useEffect(() => {
+    const shipmentIdFromUrl = searchParams.get("shipmentId");
+    if (shipmentIdFromUrl && dashboardData?.recentShipments) {
+      const shipment = dashboardData.recentShipments.find(
+        (s: any) => s.id === shipmentIdFromUrl
+      );
+      if (shipment) {
+        setSelectedShipment(shipment);
+        // Clean up the URL param
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, dashboardData, setSearchParams]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -193,9 +211,6 @@ const ManufacturerDashboard = ({
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button className="gap-2">
-                Open Operations Center <ArrowUpRight className="h-4 w-4" />
-              </Button>
               <Button variant="outline" onClick={() => navigate("/qr-scan")}>
                 Scan QR
               </Button>
@@ -514,220 +529,11 @@ const ManufacturerDashboard = ({
       </div>
 
       {/* Shipment Details Dialog */}
-      <Dialog
+      <ShipmentDetailsDialog
         open={!!selectedShipment}
         onOpenChange={(open) => !open && setSelectedShipment(null)}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Truck className="h-5 w-5 text-primary" />
-              Shipment Overview
-              {selectedShipment && (
-                <Badge
-                  variant="outline"
-                  className={`${
-                    selectedShipment.status === "DELIVERED"
-                      ? "border-green-500/50 bg-green-500/10 text-green-700"
-                      : selectedShipment.status === "IN_TRANSIT"
-                      ? "border-blue-500/50 bg-blue-500/10 text-blue-700"
-                      : selectedShipment.status === "PENDING"
-                      ? "border-amber-500/50 bg-amber-500/10 text-amber-700"
-                      : "border-border/50 bg-muted/10"
-                  }`}
-                >
-                  {selectedShipment.status.replace(/_/g, " ")}
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedShipment && (
-                <span className="font-mono text-xs">
-                  ID: {selectedShipment.id}
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedShipment && (
-            <div className="space-y-6 py-4">
-              {/* Progress */}
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <h3 className="font-semibold">Shipment Progress</h3>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Delivery Progress
-                    </span>
-                    <span className="font-semibold text-primary">
-                      {selectedShipment.status === "DELIVERED"
-                        ? "100%"
-                        : selectedShipment.status === "IN_TRANSIT"
-                        ? "50%"
-                        : "0%"}
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all"
-                      style={{
-                        width:
-                          selectedShipment.status === "DELIVERED"
-                            ? "100%"
-                            : selectedShipment.status === "IN_TRANSIT"
-                            ? "50%"
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedShipment.segments?.length || 0} segments •{" "}
-                    {selectedShipment.packageCount}{" "}
-                    {selectedShipment.packageCount === 1
-                      ? "package"
-                      : "packages"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Destination */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-muted/20 p-4">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    Destination
-                  </h3>
-                  <div className="space-y-2">
-                    <p className="font-medium">
-                      {selectedShipment.destinationName}
-                    </p>
-                    {selectedShipment.segments?.[
-                      selectedShipment.segments.length - 1
-                    ]?.end_checkpoint && (
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>
-                          {
-                            selectedShipment.segments[
-                              selectedShipment.segments.length - 1
-                            ].end_checkpoint.location
-                          }
-                        </p>
-                        <p>
-                          {
-                            selectedShipment.segments[
-                              selectedShipment.segments.length - 1
-                            ].end_checkpoint.state
-                          }
-                          {selectedShipment.segments[
-                            selectedShipment.segments.length - 1
-                          ].end_checkpoint.country &&
-                            `, ${
-                              selectedShipment.segments[
-                                selectedShipment.segments.length - 1
-                              ].end_checkpoint.country
-                            }`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-muted/20 p-4">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-secondary" />
-                    Timeline
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Created:</span>
-                      <span className="font-medium">
-                        {new Date(
-                          selectedShipment.createdAt
-                        ).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {selectedShipment.estimatedDelivery && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">ETA:</span>
-                        <span className="font-medium">
-                          {new Date(
-                            selectedShipment.estimatedDelivery
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Route Segments */}
-              {selectedShipment.segments &&
-                selectedShipment.segments.length > 0 && (
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                    <h3 className="font-semibold mb-3">Route Segments</h3>
-                    <div className="space-y-3">
-                      {selectedShipment.segments.map(
-                        (segment: any, idx: number) => (
-                          <div
-                            key={segment.segment_id}
-                            className="flex items-start gap-3 pb-3 border-b border-border/40 last:border-0 last:pb-0"
-                          >
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                              {idx + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="text-sm font-medium">
-                                  {segment.start_checkpoint.name}
-                                </p>
-                                <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
-                                <p className="text-sm font-medium">
-                                  {segment.end_checkpoint.name}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>
-                                  {segment.start_checkpoint.state},{" "}
-                                  {segment.start_checkpoint.country}
-                                </span>
-                                <span>→</span>
-                                <span>
-                                  {segment.end_checkpoint.state},{" "}
-                                  {segment.end_checkpoint.country}
-                                </span>
-                              </div>
-                            </div>
-                            <Badge variant="outline" className="text-xs">
-                              {segment.status}
-                            </Badge>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedShipment(null)}>
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                setSelectedShipment(null);
-                navigate("/shipment");
-              }}
-            >
-              View Full Details
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        shipment={selectedShipment}
+      />
     </div>
   );
 };

@@ -13,6 +13,9 @@ import {
   MapPin,
   Thermometer,
   Calendar,
+  AlertCircle,
+  Shield,
+  ExternalLink,
 } from "lucide-react";
 
 type PackageStatusResponse = {
@@ -71,6 +74,14 @@ type PackageStatusResponse = {
       blockchain?: { tx_hash?: string; ipfs_cid?: string | null };
     }>;
   };
+  location_check?: {
+    status?: string;
+    range_km?: number;
+    distance_km?: number | null;
+    device_location?: { latitude?: number; longitude?: number };
+    package_location?: { latitude?: number; longitude?: number };
+    warning?: string | null;
+  } | null;
 };
 
 const getStatusColor = (status?: string) => {
@@ -105,6 +116,33 @@ const formatTemp = (val?: string) => {
   // remove non-numeric characters (e.g. trailing 'C') and keep sign/decimal
   const n = String(val).replace(/[^0-9.-]/g, "");
   return n ? `${n}°C` : "N/A";
+};
+
+const getBreachSeverity = (breachType?: string): "critical" | "warning" => {
+  if (breachType === "DOOR_TAMPER") return "critical";
+  if (breachType === "TEMPERATURE_EXCURSION") return "warning";
+  return "warning";
+};
+
+const getBreachSeverityStyles = (severity: "critical" | "warning") => {
+  if (severity === "critical") {
+    return {
+      border: "border-red-300",
+      bg: "bg-red-50/80",
+      badge: "bg-red-100 text-red-800",
+      icon: "bg-red-100 text-red-700",
+      dot: "bg-red-500",
+      header: "text-red-900",
+    };
+  }
+  return {
+    border: "border-amber-300",
+    bg: "bg-amber-50/80",
+    badge: "bg-amber-100 text-amber-800",
+    icon: "bg-amber-100 text-amber-700",
+    dot: "bg-amber-500",
+    header: "text-amber-900",
+  };
 };
 
 const timeSince = (dateString?: string) => {
@@ -155,6 +193,24 @@ export function PackageStatusDisplay({ data }: PackageStatusDisplayProps) {
   const breachStats = data.breaches?.statistics;
   const breachRecords = data.breaches?.records || [];
   const hasActiveBreaches = (breachStats?.active ?? 0) > 0;
+  const locationCheck = data.location_check;
+  const locationStatus = locationCheck?.status ?? null;
+  const isLocationWarning =
+    locationStatus !== null &&
+    locationStatus !== "OK" &&
+    locationStatus !== "NO_DEVICE_COORDS";
+  const locationBadgeText = locationStatus
+    ? locationStatus.replace(/_/g, " ")
+    : "UNKNOWN";
+  const distanceLabel =
+    locationCheck?.distance_km !== null &&
+    locationCheck?.distance_km !== undefined
+      ? `${locationCheck.distance_km.toFixed(2)} km`
+      : null;
+  const rangeLabel =
+    locationCheck?.range_km !== null && locationCheck?.range_km !== undefined
+      ? `${locationCheck.range_km} km`
+      : null;
   const batchExpiry =
     data.package?.batch?.expiry_date ??
     data.package?.batch?.expiryDate ??
@@ -186,6 +242,54 @@ export function PackageStatusDisplay({ data }: PackageStatusDisplayProps) {
             {data.package?.package_accepted || "N/A"}
           </Badge>
         </div>
+        {locationCheck ? (
+          <div
+            className={`rounded-lg border p-4 ${
+              isLocationWarning
+                ? "border-amber-200/80 bg-amber-50/80"
+                : "border-emerald-200/80 bg-emerald-50/80"
+            }`}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-md ${
+                    isLocationWarning
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {isLocationWarning ? (
+                    <AlertTriangle className="h-5 w-5" />
+                  ) : (
+                    <MapPin className="h-5 w-5" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Location verification
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {locationCheck.warning ??
+                      (isLocationWarning
+                        ? "Device location is outside the package GPS range."
+                        : "Device location matches the package GPS range.")}
+                  </p>
+                </div>
+              </div>
+              <Badge
+                className={`h-fit text-xs px-3 py-1 ${
+                  isLocationWarning
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-emerald-100 text-emerald-800"
+                }`}
+              >
+                {locationBadgeText}
+              </Badge>
+            </div>
+            {/* Range and distance intentionally hidden in UI */}
+          </div>
+        ) : null}
 
         {/* Quick Stats (Product + Temps + Manufacture/Expiry) */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -455,73 +559,110 @@ export function PackageStatusDisplay({ data }: PackageStatusDisplayProps) {
 
             {/* Detailed Breach Records */}
             {breachRecords.length > 0 && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-6 space-y-2">
                 <p className="text-sm font-semibold text-foreground">
                   Breach Details
                 </p>
                 <div className="space-y-2">
-                  {breachRecords.map((breach) => (
-                    <div
-                      key={breach.breach_uuid}
-                      className={`rounded-lg border p-2 sm:p-3 ${
-                        breach.status === "CONFIRMED"
-                          ? "border-red-200 bg-red-50/50"
-                          : "border-border/50 bg-muted/30"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-red-600" />
-                            <p className="font-semibold text-foreground">
-                              {breach.breach_type || "Breach"}
-                            </p>
+                  {breachRecords.map((breach) => {
+                    const severity = getBreachSeverity(breach.breach_type);
+                    const styles = getBreachSeverityStyles(severity);
+                    const isCritical = severity === "critical";
+
+                    return (
+                      <div
+                        key={breach.breach_uuid}
+                        className={`rounded-lg border ${styles.border} ${styles.bg} p-3 transition-all hover:shadow-md`}
+                      >
+                        {/* Header with Severity Badge */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {/* Severity Icon */}
+                            <div
+                              className={`flex-shrink-0 rounded-md p-1.5 ${styles.icon}`}
+                            >
+                              {isCritical ? (
+                                <Shield className="h-4 w-4" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4" />
+                              )}
+                            </div>
+
+                            {/* Title and Time */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4
+                                  className={`text-sm font-bold ${styles.header}`}
+                                >
+                                  {breach.breach_type?.replace(/_/g, " ") ||
+                                    "Breach"}
+                                </h4>
+                                <Badge
+                                  className={`${styles.badge} text-xs font-semibold flex-shrink-0`}
+                                >
+                                  {isCritical ? "CRITICAL" : "WARNING"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                {formatDate(breach.detected_at)}
+                              </p>
+                            </div>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Detected: {formatDate(breach.detected_at)}
-                          </p>
+                        </div>
+
+                        {/* Breach Details Grid - Compact */}
+                        <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                          {/* Temperature Details */}
+                          {breach.breach_type === "TEMPERATURE_EXCURSION" &&
+                            breach.detected_value && (
+                              <>
+                                <div className="rounded-md bg-white/60 p-2 border border-gray-200">
+                                  <p className="text-xs text-gray-600 font-medium">
+                                    Detected
+                                  </p>
+                                  <p className="text-base font-bold text-red-700">
+                                    {formatTemp(breach.detected_value)}
+                                  </p>
+                                </div>
+                                <div className="rounded-md bg-white/60 p-2 border border-gray-200">
+                                  <p className="text-xs text-gray-600 font-medium">
+                                    Allowed
+                                  </p>
+                                  <p className="text-base font-bold text-green-700">
+                                    {formatTemp(breach.threshold?.min)} to{" "}
+                                    {formatTemp(breach.threshold?.max)}
+                                  </p>
+                                </div>
+                              </>
+                            )}
+
+                          {/* Location Details with Map Link */}
+                          {breach.location?.latitude && (
+                            <div className="rounded-md bg-white/60 p-2 border border-gray-200">
+                              <p className="text-xs text-gray-600 font-medium mb-1 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" /> Location
+                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-semibold text-gray-900 font-mono">
+                                  {Number(breach.location.latitude).toFixed(4)},{" "}
+                                  {Number(breach.location.longitude).toFixed(4)}
+                                </p>
+                                <a
+                                  href={`https://www.google.com/maps?q=${breach.location.latitude},${breach.location.longitude}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-0.5 rounded bg-blue-500 px-2 py-0.5 text-xs font-semibold text-white hover:bg-blue-600 transition-colors flex-shrink-0"
+                                >
+                                  <MapPin className="h-3 w-3" />
+                                  Map
+                                </a>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Breach Details */}
-                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {breach.breach_type === "TEMPERATURE_EXCURSION" &&
-                          breach.detected_value && (
-                            <>
-                              <div className="text-xs">
-                                <p className="text-muted-foreground">
-                                  Detected Value
-                                </p>
-                                <p className="font-semibold text-foreground">
-                                  {breach.detected_value}°C
-                                </p>
-                              </div>
-                              <div className="text-xs">
-                                <p className="text-muted-foreground">
-                                  Threshold
-                                </p>
-                                <p className="font-semibold text-foreground">
-                                  {breach.threshold?.min}°C -{" "}
-                                  {breach.threshold?.max}°C
-                                </p>
-                              </div>
-                            </>
-                          )}
-
-                        {breach.location?.latitude && (
-                          <div className="text-xs">
-                            <p className="flex items-center gap-1 text-muted-foreground">
-                              <MapPin className="h-3 w-3" /> Location
-                            </p>
-                            <p className="font-semibold text-foreground">
-                              {breach.location.latitude},{" "}
-                              {breach.location.longitude}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -38,8 +38,9 @@ import {
   Truck,
   XCircle,
   Package,
+  AlertCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/useAppToast";
 import { cn } from "@/lib/utils";
 import {
   handoverUtils,
@@ -49,6 +50,7 @@ import {
 import { shipmentService } from "@/services/shipmentService";
 import type { SupplierShipmentRecord, SupplierShipmentStatus } from "../types";
 import { ViewShipmentButton } from "./ViewShipmentButton";
+import { SegmentAcceptanceToast } from "@/components/toasts/SegmentAcceptanceToast";
 import { formatDistanceToNow } from "date-fns";
 
 const {
@@ -85,8 +87,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   PENDING: {
     label: "Pending",
     title: "Pending consignments",
-    description:
-      "Review shipment details and accept once contents are verified.",
+    description: "",
     loadingTitle: "Loading pending consignments",
     loadingDescription: "Fetching consignments awaiting your acceptance.",
     emptyTitle: "No pending consignments",
@@ -97,7 +98,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   ACCEPTED: {
     label: "Accepted",
     title: "Accepted consignments",
-    description: "Plan the next actions for consignments you have accepted.",
+    description: "",
     loadingTitle: "Loading accepted consignments",
     loadingDescription: "Fetching accepted consignments.",
     emptyTitle: "No accepted consignments",
@@ -109,7 +110,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   IN_TRANSIT: {
     label: "In transit",
     title: "In-transit consignments",
-    description: "Track consignments moving through logistics checkpoints.",
+    description: "",
     loadingTitle: "Loading in-transit consignments",
     loadingDescription: "Fetching consignments currently on the move.",
     emptyTitle: "No consignments in transit",
@@ -121,7 +122,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   DELIVERED: {
     label: "Delivered",
     title: "Delivered consignments",
-    description: "Confirm deliveries as they arrive at their destinations.",
+    description: "",
     loadingTitle: "Loading delivered consignments",
     loadingDescription: "Fetching consignments marked as delivered.",
     emptyTitle: "No delivered consignments",
@@ -133,7 +134,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   CLOSED: {
     label: "Closed",
     title: "Closed consignments",
-    description: "Review closed consignments and download records when needed.",
+    description: "",
     loadingTitle: "Loading closed consignments",
     loadingDescription: "Fetching consignments that have been closed.",
     emptyTitle: "No closed consignments",
@@ -144,7 +145,7 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   CANCELLED: {
     label: "Cancelled",
     title: "Cancelled consignments",
-    description: "Review consignments that were cancelled or rejected.",
+    description: "",
     loadingTitle: "Loading cancelled consignments",
     loadingDescription: "Fetching consignments that were cancelled.",
     emptyTitle: "No cancelled consignments",
@@ -155,7 +156,90 @@ const STATUS_CONFIG: Record<SupplierShipmentStatus, StatusConfig> = {
   },
 };
 
+const extractApiErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  if ("response" in error) {
+    const response = (
+      error as { response?: { data?: { error?: unknown; message?: unknown } } }
+    ).response;
+    const apiError = response?.data?.error;
+    if (typeof apiError === "string") {
+      return apiError;
+    }
+    if (apiError && typeof apiError === "object") {
+      const message = (apiError as { message?: unknown }).message;
+      if (typeof message === "string") {
+        return message;
+      }
+    }
+    const fallbackMessage = response?.data?.message;
+    if (typeof fallbackMessage === "string") {
+      return fallbackMessage;
+    }
+  }
+
+  if ("message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return undefined;
+};
+
+const buildRangePopupMessage = (
+  message: string,
+  actionLabel: "takeover" | "handover"
+): string | null => {
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("origin checkpoint") ||
+    lower.includes("pickup checkpoint")
+  ) {
+    return `Your current location is outside the permitted range for this checkpoint. Please move closer to the pickup checkpoint and try ${actionLabel} again.`;
+  }
+
+  if (
+    lower.includes("destination checkpoint") ||
+    lower.includes("delivery checkpoint")
+  ) {
+    return `Your current location is outside the permitted range for this checkpoint. Please move closer to the delivery checkpoint and try ${actionLabel} again.`;
+  }
+
+  if (
+    lower.includes("latest device gps reading") ||
+    lower.includes("latest shipment gps reading") ||
+    lower.includes("device gps") ||
+    lower.includes("shipment gps")
+  ) {
+    return "Your current location is outside the permitted range. Please move closer to the package location and try handover again.";
+  }
+
+  if (lower.includes("no gps sensor readings")) {
+    return "Device GPS data missing. Make sure the device is online and sending GPS data.";
+  }
+
+  if (lower.includes("gps reading has invalid coordinates")) {
+    return "Device GPS data invalid. The latest GPS reading is missing coordinates.";
+  }
+
+  if (
+    lower.includes("location is not within") ||
+    lower.includes("shipment_segment_access_denied")
+  ) {
+    return "Your location is too far from the checkpoint. Please move closer.";
+  }
+
+  return null;
+};
+
 export function SupplierSection() {
+  const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const shared = useHandoverSharedContext();
   const supplier = useSupplierContext();
   const canRender = supplier.enabled && shared.role === "SUPPLIER";
@@ -171,6 +255,8 @@ export function SupplierSection() {
   const [takeoverLocationError, setTakeoverLocationError] = useState<
     string | null
   >(null);
+  const [takeoverError, setTakeoverError] = useState<string | null>(null);
+  const [takeoverErrorDialogOpen, setTakeoverErrorDialogOpen] = useState(false);
   const [acceptDialogSegmentId, setAcceptDialogSegmentId] = useState<
     string | null
   >(null);
@@ -208,13 +294,13 @@ export function SupplierSection() {
     const isSecure = typeof window !== "undefined" && window.isSecureContext;
     if (!isSecure) {
       const msg = "Location access requires HTTPS or localhost.";
-      toast.error(msg);
+      showError(msg);
       setTakeoverLocating(false);
       setTakeoverLocationError(msg);
       return;
     }
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      toast.error("Geolocation is unavailable in this browser.");
+      showError("Geolocation is unavailable in this browser");
       setTakeoverLocating(false);
       setTakeoverLocationError("Geolocation unavailable");
       return;
@@ -234,7 +320,7 @@ export function SupplierSection() {
         const message = denied
           ? "Location permission denied. Allow access or enter coordinates manually."
           : "Unable to fetch your location. Allow location access and try again.";
-        toast.error(message);
+        showError(message);
         setTakeoverLocating(false);
         setTakeoverLocationError(message);
       },
@@ -249,6 +335,7 @@ export function SupplierSection() {
     setTakeoverForm({ latitude: "", longitude: "" });
     setTakeoverLocating(false);
     setTakeoverLocationError(null);
+    setTakeoverError(null);
   };
 
   const handleTakeoverDialogChange = (open: boolean) => {
@@ -260,16 +347,14 @@ export function SupplierSection() {
   };
 
   const handleDownloadProof = (shipment: SupplierShipmentRecord) => {
-    toast.info(
-      `Downloading records for segment ${getSegmentReference(shipment)} (demo).`
+    showInfo(
+      `Downloading records for segment ${getSegmentReference(shipment)}`
     );
   };
 
   const handleReportIssue = (shipment: SupplierShipmentRecord) => {
-    toast.info(
-      `Support has been notified about segment ${getSegmentReference(
-        shipment
-      )}.`
+    showInfo(
+      `Support has been notified about segment ${getSegmentReference(shipment)}`
     );
   };
 
@@ -278,9 +363,10 @@ export function SupplierSection() {
     const latitude = Number(takeoverForm.latitude);
     const longitude = Number(takeoverForm.longitude);
     if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast.error("Provide valid latitude and longitude values.");
+      showError("Provide valid latitude and longitude values");
       return;
     }
+
     try {
       await supplier.takeoverSegment(
         String(getSegmentReference(takeoverTarget)),
@@ -290,8 +376,27 @@ export function SupplierSection() {
         }
       );
       closeTakeoverDialog();
-    } catch {
-      // errors handled via context mutation toast
+    } catch (err: unknown) {
+      closeTakeoverDialog();
+      // Check if it's a location-based access denied error
+      const errorMessage =
+        extractApiErrorMessage(err) ||
+        (typeof err === "object" && err !== null && "message" in err
+          ? (err as { message?: unknown }).message
+          : JSON.stringify(err || ""));
+      const popupMessage = buildRangePopupMessage(
+        typeof errorMessage === "string" ? errorMessage : String(errorMessage),
+        "takeover"
+      );
+      if (popupMessage) {
+        // Then show the error popup
+        setTakeoverError(popupMessage);
+        setTakeoverErrorDialogOpen(true);
+        // Don't rethrow - we've handled it with the popup
+        return;
+      }
+      // For other errors, rethrow so context's onError can show toast
+      throw err;
     }
   };
 
@@ -311,14 +416,19 @@ export function SupplierSection() {
   const visibleStatusOrder = supplier.statusOrder.filter(
     (status) => status !== "CLOSED" && status !== "CANCELLED"
   );
-  const activeTab = visibleStatusOrder.includes(supplier.activeStatus)
+  const activeTab = (visibleStatusOrder as SupplierShipmentStatus[]).includes(
+    supplier.activeStatus
+  )
     ? supplier.activeStatus
     : visibleStatusOrder[0];
 
+  // Always call hooks at the top level, not conditionally
   useEffect(() => {
     if (
       visibleStatusOrder.length > 0 &&
-      !visibleStatusOrder.includes(supplier.activeStatus)
+      !(visibleStatusOrder as SupplierShipmentStatus[]).includes(
+        supplier.activeStatus
+      )
     ) {
       supplier.setActiveStatus(visibleStatusOrder[0]);
     }
@@ -434,6 +544,36 @@ export function SupplierSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Location Access Denied Error Dialog */}
+      <AlertDialog
+        open={takeoverErrorDialogOpen}
+        onOpenChange={setTakeoverErrorDialogOpen}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader className="gap-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <AlertDialogTitle className="text-lg">
+                  Location Verification Failed
+                </AlertDialogTitle>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm text-destructive">
+            {takeoverError}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => setTakeoverErrorDialogOpen(false)}
+            >
+              Close
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -461,9 +601,7 @@ function SupplierSectionFilters({
         />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground sm:justify-end">
-        <span className="max-w-xs">
-          Filters supplier consignments across all tabs by logistics area.
-        </span>
+        <span className="max-w-xs"></span>
         {hasAreaFilter && (
           <Button variant="ghost" size="sm" onClick={() => setAreaQuery("")}>
             Clear
@@ -582,6 +720,7 @@ const SupplierShipmentActions = ({
   shipment,
   context,
 }: SupplierShipmentActionsProps) => {
+  const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const {
     supplier,
     sharedUuid,
@@ -595,15 +734,17 @@ const SupplierShipmentActions = ({
     setAcceptingSegmentId,
   } = context;
   const queryClient = useQueryClient();
-  if (!supplier.enabled) return null;
   const segmentIdentifier = shipment.segmentId ?? shipment.id;
 
+  // Always call useQuery, but control fetching with 'enabled'
   const dialogOpen = acceptDialogSegmentId === segmentIdentifier;
   const { data: segmentDetail, isLoading: loadingSegmentDetail } = useQuery({
     queryKey: ["shipmentSegmentDetail", segmentIdentifier],
     queryFn: () => shipmentService.getSegmentById(segmentIdentifier),
     enabled: dialogOpen && Boolean(segmentIdentifier),
   });
+
+  if (!supplier.enabled) return null;
 
   const allowAction = (
     flag: keyof NonNullable<SupplierShipmentRecord["actions"]>
@@ -671,54 +812,65 @@ const SupplierShipmentActions = ({
               segmentDetail?.estimatedArrivalDate || shipment.expectedArrival
             ).toLocaleString()
           : null;
-      const handleAccept = () => {
+      const handleAccept = async () => {
         if (isAccepting || !canAccept) return;
         setAcceptingSegmentId(segmentIdentifier);
-        shipmentService
-          .accept(String(segmentIdentifier))
-          .then(() => {
-            toast.success("Shipment accepted");
-            if (sharedUuid) {
-              queryClient.invalidateQueries({
-                queryKey: ["incomingShipments", sharedUuid],
-              });
-              supplier.statusOrder.forEach((status) =>
+        try {
+          await shipmentService.accept(String(segmentIdentifier));
+
+          // Show success toast
+          showSuccess("Segment accepted successfully");
+
+          // Invalidate and refetch all relevant queries immediately
+          if (sharedUuid) {
+            // Invalidate incoming shipments
+            await queryClient.invalidateQueries({
+              queryKey: ["incomingShipments", sharedUuid],
+            });
+
+            // Invalidate all supplier segment statuses
+            await Promise.all(
+              supplier.statusOrder.map((status) =>
                 queryClient.invalidateQueries({
                   queryKey: ["supplierSegments", sharedUuid, status],
                 })
-              );
-              // Force the active tab to refetch so the card disappears immediately
-              queryClient.refetchQueries({
-                queryKey: [
-                  "supplierSegments",
-                  sharedUuid,
-                  supplier.activeStatus,
-                ],
-                type: "active",
-              });
-            } else {
-              queryClient.invalidateQueries({ queryKey: ["incomingShipments"] });
-              queryClient.invalidateQueries({ queryKey: ["supplierSegments"] });
-            }
-            setAcceptDialogSegmentId(null);
-          })
-          .catch((error) => {
-            console.error(error);
-            const message =
-              typeof error === "object" &&
-              error !== null &&
-              "response" in error &&
-              typeof (error as { response?: { data?: { error?: string } } })
-                .response?.data?.error === "string"
-                ? (error as { response?: { data?: { error?: string } } })
-                    .response?.data?.error
-              : "Failed to accept shipment";
-            toast.error(message);
-          })
-          .finally(() => {
-            setAcceptingSegmentId(null);
-            setAcceptDialogSegmentId(null);
-          });
+              )
+            );
+
+            // Force immediate refetch of active tab
+            await queryClient.refetchQueries({
+              queryKey: ["supplierSegments", sharedUuid, supplier.activeStatus],
+            });
+          } else {
+            // Fallback if no UUID
+            await queryClient.invalidateQueries({
+              queryKey: ["incomingShipments"],
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ["supplierSegments"],
+            });
+            await queryClient.refetchQueries({
+              queryKey: ["supplierSegments"],
+            });
+          }
+
+          setAcceptDialogSegmentId(null);
+        } catch (error) {
+          console.error("Segment acceptance error:", error);
+          const message =
+            typeof error === "object" &&
+            error !== null &&
+            "response" in error &&
+            typeof (error as { response?: { data?: { error?: string } } })
+              .response?.data?.error === "string"
+              ? (error as { response?: { data?: { error?: string } } }).response
+                  ?.data?.error
+              : "Please try again";
+          showError(message);
+        } finally {
+          setAcceptingSegmentId(null);
+          setAcceptDialogSegmentId(null);
+        }
       };
       return (
         <AlertDialog open={dialogOpen} onOpenChange={handleDialogChange}>
@@ -922,9 +1074,11 @@ function SupplierSectionHeader({
   description,
 }: SupplierSectionHeaderProps) {
   return (
-    <div className="space-y-1">
+    <div className="mb-3 space-y-1">
       <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      {description ? (
+        <p className="text-sm text-muted-foreground">{description}</p>
+      ) : null}
     </div>
   );
 }
@@ -1144,19 +1298,21 @@ function LoaderIndicator() {
 
 function SupplierHandoverDialog() {
   const supplier = useSupplierContext();
+  const { showError } = useAppToast();
   const [handoverLocating, setHandoverLocating] = useState(false);
   const [handoverLocationError, setHandoverLocationError] = useState<
     string | null
   >(null);
+  const [handoverError, setHandoverError] = useState<string | null>(null);
+  const [handoverErrorDialogOpen, setHandoverErrorDialogOpen] = useState(false);
 
-  if (!supplier.enabled) return null;
   const coordsMissing =
     supplier.handoverForm.latitude.trim().length === 0 ||
     supplier.handoverForm.longitude.trim().length === 0;
 
   const requestHandoverLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      toast.error("Geolocation is unavailable in this browser.");
+      showError("Geolocation is unavailable in this browser");
       setHandoverLocationError("Geolocation unavailable");
       return;
     }
@@ -1174,8 +1330,8 @@ function SupplierHandoverDialog() {
       },
       (error) => {
         console.error(error);
-        toast.error(
-          "Unable to fetch your location. Allow location access and try again."
+        showError(
+          "Unable to fetch your location. Allow location access and try again"
         );
         setHandoverLocating(false);
         setHandoverLocationError("Location access denied or unavailable");
@@ -1185,6 +1341,7 @@ function SupplierHandoverDialog() {
   };
 
   useEffect(() => {
+    if (!supplier.enabled) return;
     if (supplier.handoverDialogOpen) {
       requestHandoverLocation();
     } else {
@@ -1192,78 +1349,131 @@ function SupplierHandoverDialog() {
       setHandoverLocating(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supplier.handoverDialogOpen]);
+  }, [supplier.handoverDialogOpen, supplier.enabled]);
+
+  const handleConfirmHandover = async () => {
+    try {
+      await supplier.submitHandover();
+    } catch (err) {
+      const errorMessage =
+        extractApiErrorMessage(err) ||
+        (err as { message?: unknown })?.message ||
+        JSON.stringify(err || "");
+      const popupMessage = buildRangePopupMessage(
+        typeof errorMessage === "string" ? errorMessage : String(errorMessage),
+        "handover"
+      );
+      if (popupMessage) {
+        supplier.setHandoverDialogOpen(false);
+        setHandoverError(popupMessage);
+        setHandoverErrorDialogOpen(true);
+      }
+    }
+  };
+
+  if (!supplier.enabled) return null;
 
   return (
-    <Dialog
-      open={supplier.handoverDialogOpen}
-      onOpenChange={supplier.setHandoverDialogOpen}
-    >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Handover shipment</DialogTitle>
-          <DialogDescription>
-            Your current location will be attached to finalize this handover.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={supplier.handoverDialogOpen}
+        onOpenChange={supplier.setHandoverDialogOpen}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Handover shipment</DialogTitle>
+            <DialogDescription>
+              Your current location will be attached to finalize this handover.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <p className="text-sm text-muted-foreground">
-            Browser location is requested automatically; the coordinates are
-            sent with this handover.
-          </p>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Location status</label>
-            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
-              {handoverLocating ? (
-                <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <div className="grid gap-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Browser location is requested automatically; the coordinates are
+              sent with this handover.
+            </p>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Location status</label>
+              <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+                {handoverLocating ? (
+                  <span className="inline-flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Fetching your GPS location...
+                  </span>
+                ) : handoverLocationError ? (
+                  <span className="text-destructive">
+                    {handoverLocationError}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Location captured and ready to send.
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                If permission is blocked, enable location in your browser and
+                reopen this dialog.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => supplier.setHandoverDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmHandover}
+              disabled={
+                supplier.handoverLoading ||
+                handoverLocating ||
+                handoverLocationError !== null ||
+                coordsMissing
+              }
+            >
+              {supplier.handoverLoading ? (
+                <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Fetching your GPS location...
-                </span>
-              ) : handoverLocationError ? (
-                <span className="text-destructive">
-                  {handoverLocationError}
+                  Submitting...
                 </span>
               ) : (
-                <span className="text-muted-foreground">
-                  Location captured and ready to send.
-                </span>
+                "Confirm handover"
               )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              If permission is blocked, enable location in your browser and
-              reopen this dialog.
-            </p>
-          </div>
-        </div>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter className="gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => supplier.setHandoverDialogOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={supplier.submitHandover}
-            disabled={
-              supplier.handoverLoading ||
-              handoverLocating ||
-              handoverLocationError !== null ||
-              coordsMissing
-            }
-          >
-            {supplier.handoverLoading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting...
-              </span>
-            ) : (
-              "Confirm handover"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <AlertDialog
+        open={handoverErrorDialogOpen}
+        onOpenChange={setHandoverErrorDialogOpen}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader className="gap-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <AlertDialogTitle className="text-lg">
+                  Location Verification Failed
+                </AlertDialogTitle>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm text-destructive">
+            {handoverError}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => setHandoverErrorDialogOpen(false)}
+            >
+              Close
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

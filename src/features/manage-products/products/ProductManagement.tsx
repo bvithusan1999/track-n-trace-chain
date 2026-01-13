@@ -1,17 +1,40 @@
 ﻿import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { productRegistryService, type CreateProductRequest, type UpdateProductRequest } from "@/services/productService";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  productRegistryService,
+  type CreateProductRequest,
+  type UpdateProductRequest,
+} from "@/services/productService";
 import { productCategoryService } from "@/services/productCategoryService";
 import type { Product, ProductCategory } from "@/types";
 import { Loader2, PlusCircle } from "lucide-react";
+import { useAppToast } from "@/hooks/useAppToast";
 
 const emptyProductForm: CreateProductRequest = {
   productName: "",
@@ -46,19 +69,23 @@ const formatDetailedDateTime = (value?: string) => {
 
 export function ProductManagement() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showSuccess, showError } = useAppToast();
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [productSearch, setProductSearch] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateProductRequest>(emptyProductForm);
+  const [createForm, setCreateForm] =
+    useState<CreateProductRequest>(emptyProductForm);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editForm, setEditForm] = useState<UpdateProductRequest>(emptyProductForm);
+  const [editForm, setEditForm] =
+    useState<UpdateProductRequest>(emptyProductForm);
 
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
-  const { data: categories = [], isLoading: loadingCategories } = useQuery<ProductCategory[]>({
+  const { data: categories = [], isLoading: loadingCategories } = useQuery<
+    ProductCategory[]
+  >({
     queryKey: ["productCategories"],
     queryFn: () => productCategoryService.list(),
   });
@@ -82,17 +109,12 @@ export function ProductManagement() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       setIsCreateDialogOpen(false);
       setCreateForm(emptyProductForm);
-      toast({
-        title: "Product created",
-        description: "The product has been added to your catalogue.",
-      });
+      showSuccess("Product created");
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to create product",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to create product"
+      );
     },
   });
 
@@ -102,17 +124,12 @@ export function ProductManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       setEditingProduct(null);
-      toast({
-        title: "Product updated",
-        description: "Product details saved successfully.",
-      });
+      showSuccess("Product updated");
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to update product",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to update product"
+      );
     },
   });
 
@@ -152,11 +169,7 @@ export function ProductManagement() {
   const handleCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!createForm.productName.trim() || !createForm.productCategoryId) {
-      toast({
-        variant: "destructive",
-        title: "Fill in required fields",
-        description: "Product name and category are required.",
-      });
+      showError("Product name and category are required");
       return;
     }
     createMutation.mutate();
@@ -166,20 +179,84 @@ export function ProductManagement() {
     event.preventDefault();
     if (!editingProduct) return;
     if (!editForm.productName?.trim() || !editForm.productCategoryId) {
-      toast({
-        variant: "destructive",
-        title: "Fill in required fields",
-        description: "Product name and category are required.",
-      });
+      showError("Product name and category are required");
       return;
     }
     updateMutation.mutate({ id: editingProduct.id, data: editForm });
   };
 
   const renderProducts = () => {
-  const hasFilter = Boolean(productSearch.trim());
+    const hasFilter = Boolean(productSearch.trim());
 
-  if (loadingProducts) {
+    if (loadingProducts) {
+      return (
+        <div className="rounded-lg border border-border/60">
+          <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
+            <Table className="min-w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Temperature range</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <TableRow key={`product-skeleton-${index}`}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="mt-2 h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-16" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {(error as Error)?.message ?? "Unable to load products right now."}
+        </div>
+      );
+    }
+
+    if (!products.length && !hasFilter) {
+      return (
+        <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
+          No products found. Use the Create Product button to add one.
+        </div>
+      );
+    }
+
+    if (!visibleProducts.length) {
+      return (
+        <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
+          No products match your current filter.
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-lg border border-border/60">
         <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
@@ -194,128 +271,69 @@ export function ProductManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <TableRow key={`product-skeleton-${index}`}>
-                  <TableCell>
-                    <Skeleton className="h-5 w-40" />
-                    <Skeleton className="mt-2 h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="h-8 w-16" />
-                      <Skeleton className="h-8 w-16" />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {visibleProducts.map((product) => {
+                const categoryLabel =
+                  product.productCategory?.name ??
+                  categoryLookup.get(product.productCategoryId) ??
+                  "Uncategorised";
+                const tempLabel =
+                  product.requiredStartTemp && product.requiredEndTemp
+                    ? `${product.requiredStartTemp} - ${product.requiredEndTemp}`
+                    : "Not specified";
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <div className="font-medium text-foreground">
+                        {product.productName}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {product.handlingInstructions || "No handling notes"}
+                      </p>
+                    </TableCell>
+                    <TableCell>{categoryLabel}</TableCell>
+                    <TableCell>{tempLabel}</TableCell>
+                    <TableCell>{formatDateTime(product.updatedAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewingProduct(product)}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setEditingProduct(product);
+                            setEditForm({
+                              productName: product.productName ?? "",
+                              productCategoryId:
+                                product.productCategory?.id ??
+                                product.productCategoryId ??
+                                "",
+                              requiredStartTemp:
+                                product.requiredStartTemp ?? "",
+                              requiredEndTemp: product.requiredEndTemp ?? "",
+                              handlingInstructions:
+                                product.handlingInstructions ?? "",
+                            });
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       </div>
     );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-        {(error as Error)?.message ?? "Unable to load products right now."}
-      </div>
-    );
-  }
-
-  if (!products.length && !hasFilter) {
-    return (
-      <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
-        No products found. Use the Create Product button to add one.
-      </div>
-    );
-  }
-
-  if (!visibleProducts.length) {
-    return (
-      <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
-        No products match your current filter.
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-border/60">
-      <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
-        <Table className="min-w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Temperature range</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleProducts.map((product) => {
-              const categoryLabel =
-                product.productCategory?.name ??
-                categoryLookup.get(product.productCategoryId) ??
-                "Uncategorised";
-              const tempLabel =
-                product.requiredStartTemp && product.requiredEndTemp
-                  ? `${product.requiredStartTemp} - ${product.requiredEndTemp}`
-                  : "Not specified";
-              return (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="font-medium text-foreground">
-                      {product.productName}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {product.handlingInstructions || "No handling notes"}
-                    </p>
-                  </TableCell>
-                  <TableCell>{categoryLabel}</TableCell>
-                  <TableCell>{tempLabel}</TableCell>
-                  <TableCell>{formatDateTime(product.updatedAt)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setViewingProduct(product)}>
-                        View
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setEditingProduct(product);
-                          setEditForm({
-                            productName: product.productName ?? "",
-                            productCategoryId: product.productCategory?.id ?? product.productCategoryId ?? "",
-                            requiredStartTemp: product.requiredStartTemp ?? "",
-                            requiredEndTemp: product.requiredEndTemp ?? "",
-                            handlingInstructions: product.handlingInstructions ?? "",
-                          });
-                        }}
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-};;
+  };
 
   return (
     <section className="space-y-6">
@@ -723,14 +741,3 @@ export function ProductManagement() {
     </section>
   );
 }
-
-
-
-
-
-
-
-
-
-
-

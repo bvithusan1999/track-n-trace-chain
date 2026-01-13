@@ -94,6 +94,7 @@ export function Sidebar({
           { path: "/qr-scan", label: "QR Scanner", icon: QrCode },
           // { path: "/checkpoints", label: "Checkpoints", icon: MapPin },
           { path: "/shipment", label: "Shipments", icon: Truck },
+          { path: "/alerts", label: "Alerts", icon: Bell },
           // { path: "/analytics", label: "Analytics", icon: BarChart3 },
           { path: "/settings", label: "Settings", icon: Settings },
           // { path: "/register", label: "Register", icon: UserPlus },
@@ -104,6 +105,7 @@ export function Sidebar({
           { path: "/", label: "Dashboard", icon: LayoutDashboard },
           // { path: "/checkpoints", label: "Checkpoints", icon: MapPin },
           { path: "/shipment", label: "Shipments", icon: Truck },
+          { path: "/alerts", label: "Alerts", icon: Bell },
           { path: "/settings", label: "Settings", icon: Settings },
           // { path: "/register", label: "Register", icon: UserPlus },
         ];

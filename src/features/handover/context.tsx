@@ -13,7 +13,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/useAppToast";
 import { useAppStore } from "@/lib/store";
 import {
   checkpointService,
@@ -161,6 +161,105 @@ const createStatusBuckets = (): SupplierStatusBuckets =>
     acc[status] = [];
     return acc;
   }, {} as SupplierStatusBuckets);
+
+type RangeToastContent = {
+  title: string;
+  description?: string;
+};
+
+const extractApiErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  if ("response" in error) {
+    const response = (
+      error as {
+        response?: { data?: { error?: unknown; message?: unknown } };
+      }
+    ).response;
+    const apiError = response?.data?.error;
+    if (typeof apiError === "string") {
+      return apiError;
+    }
+    if (apiError && typeof apiError === "object") {
+      const message = (apiError as { message?: unknown }).message;
+      if (typeof message === "string") {
+        return message;
+      }
+    }
+    const fallbackMessage = response?.data?.message;
+    if (typeof fallbackMessage === "string") {
+      return fallbackMessage;
+    }
+  }
+
+  if ("message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return undefined;
+};
+
+const extractRangeKmLabel = (message: string): string | null => {
+  const match = message.match(/within\s+([0-9.]+)\s*km/i);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]} km`;
+};
+
+const buildRangeToastContent = (message: string): RangeToastContent | null => {
+  const lower = message.toLowerCase();
+
+  if (lower.includes("origin checkpoint")) {
+    return {
+      title: "Location Verification Failed",
+      description:
+        "Your current location is outside the permitted range. Move closer to the pickup checkpoint and try takeover again.",
+    };
+  }
+
+  if (lower.includes("destination checkpoint")) {
+    return {
+      title: "Location Verification Failed",
+      description:
+        "Your current location is outside the permitted range. Move closer to the delivery checkpoint and try handover again.",
+    };
+  }
+
+  if (
+    lower.includes("latest device gps reading") ||
+    lower.includes("latest shipment gps reading")
+  ) {
+    return {
+      title: "Location Verification Failed",
+      description:
+        "Your current location is outside the permitted range. Move closer to the package location and try handover again.",
+    };
+  }
+
+  if (lower.includes("no gps sensor readings")) {
+    return {
+      title: "Device GPS data missing",
+      description:
+        "No GPS readings were found for the selected package. Make sure the device is online and sending GPS data.",
+    };
+  }
+
+  if (lower.includes("gps reading has invalid coordinates")) {
+    return {
+      title: "Device GPS data invalid",
+      description:
+        "The latest GPS reading is missing coordinates. Please check the device telemetry and try again.",
+    };
+  }
+
+  return null;
+};
 
 const mapSegmentStatusToSupplierTab = (
   status?: string | null
@@ -408,8 +507,24 @@ export const HandoverProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  const { showSuccess, showError, showInfo, showWarning } = useAppToast();
   const { role, uuid, user } = useAppStore();
   const queryClient = useQueryClient();
+
+  const showSegmentErrorToast = (error: unknown, fallback: string) => {
+    const message = extractApiErrorMessage(error);
+    if (message) {
+      const rangeToast = buildRangeToastContent(message);
+      if (rangeToast) {
+        showError(rangeToast.title, { description: rangeToast.description });
+        return;
+      }
+      showError(message);
+      return;
+    }
+
+    showError(fallback);
+  };
 
   const { data: incoming = [], isLoading: loadingIncoming } = useQuery<
     ShipmentSegmentResponse[],
@@ -436,11 +551,8 @@ export const HandoverProvider = ({
             cursor: pageParam ?? undefined,
             limit: 20,
           }),
-        getNextPageParam: (lastPage: any) =>
-          lastPage?.cursor ?? null,
-        enabled:
-          Boolean(uuid) &&
-          (role === "SUPPLIER" || role === "WAREHOUSE"),
+        getNextPageParam: (lastPage: any) => lastPage?.cursor ?? null,
+        enabled: Boolean(uuid) && (role === "SUPPLIER" || role === "WAREHOUSE"),
         select: (payload: any) => ({
           segments: Array.isArray(payload?.segments)
             ? payload.segments.map(segmentToSupplierShipment)
@@ -571,7 +683,7 @@ export const HandoverProvider = ({
   const createShipment = useMutation({
     mutationFn: shipmentService.create,
     onSuccess: () => {
-      toast.success("Shipment created");
+      showSuccess("Shipment created successfully");
       setDestUUID("");
       resetPackageSelections();
       resetLegs();
@@ -588,7 +700,7 @@ export const HandoverProvider = ({
           ? (error as { response?: { data?: { error?: string } } }).response
               ?.data?.error
           : undefined;
-      toast.error(message || "Failed to create shipment");
+      showError(message || "Failed to create shipment");
     },
   });
 
@@ -614,17 +726,17 @@ export const HandoverProvider = ({
         }));
 
       if (shipmentItems.length === 0) {
-        toast.error("Select at least one package");
+        showError("Select at least one package");
         return;
       }
 
       if (!destUUID.trim()) {
-        toast.error("Select a destination party from the dropdown");
+        showError("Select a destination party from the dropdown");
         return;
       }
 
       if (!uuid) {
-        toast.error("Missing manufacturer identifier");
+        showError("Missing manufacturer identifier");
         return;
       }
 
@@ -656,7 +768,7 @@ export const HandoverProvider = ({
         }));
 
       if (checkpointsPayload.length === 0) {
-        toast.error("Add at least one route checkpoint leg");
+        showError("Add at least one route checkpoint leg");
         return;
       }
 
@@ -683,7 +795,7 @@ export const HandoverProvider = ({
       setAcceptingShipmentId(shipmentId);
     },
     onSuccess: () => {
-      toast.success("Shipment accepted");
+      // WebSocket notification will handle the toast, no manual toast needed
       queryClient.invalidateQueries({ queryKey: ["incomingShipments", uuid] });
       SUPPLIER_STATUS_ORDER.forEach((status) =>
         queryClient.invalidateQueries({
@@ -700,8 +812,8 @@ export const HandoverProvider = ({
           ?.data?.error === "string"
           ? (error as { response?: { data?: { error?: string } } }).response
               ?.data?.error
-          : undefined;
-      toast.error(message || "Failed to accept shipment");
+          : "Please try again";
+      showError(message || "Failed to accept shipment");
     },
     onSettled: () => {
       setAcceptingShipmentId(null);
@@ -715,7 +827,7 @@ export const HandoverProvider = ({
       setTakeoverSegmentId(segmentId);
     },
     onSuccess: () => {
-      toast.success("Segment taken over");
+      showSuccess("Segment taken over successfully");
       SUPPLIER_STATUS_ORDER.forEach((status) =>
         queryClient.invalidateQueries({
           queryKey: ["supplierSegments", uuid, status],
@@ -723,16 +835,8 @@ export const HandoverProvider = ({
       );
     },
     onError: (error: unknown) => {
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof (error as { response?: { data?: { error?: string } } }).response
-          ?.data?.error === "string"
-          ? (error as { response?: { data?: { error?: string } } }).response
-              ?.data?.error
-          : undefined;
-      toast.error(message || "Failed to take over segment");
+      // Keep toast for all errors; SupplierSection will also show a popup for range errors.
+      showSegmentErrorToast(error, "Failed to take over segment");
     },
     onSettled: () => {
       setTakeoverSegmentId(null);
@@ -748,20 +852,20 @@ export const HandoverProvider = ({
 
   const submitHandover = useCallback(async () => {
     if (!handoverTarget) {
-      toast.error("Select a segment to hand over.");
+      showError("Select a segment to hand over");
       return;
     }
 
     const segmentIdentifier = handoverTarget.segmentId ?? handoverTarget.id;
     if (!segmentIdentifier) {
-      toast.error("Unable to determine segment for handover.");
+      showError("Unable to determine segment for handover");
       return;
     }
 
     const latitude = Number(handoverForm.latitude);
     const longitude = Number(handoverForm.longitude);
     if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast.error("Provide valid latitude and longitude coordinates.");
+      showError("Provide valid latitude and longitude coordinates");
       return;
     }
 
@@ -771,7 +875,7 @@ export const HandoverProvider = ({
         latitude,
         longitude,
       });
-      toast.success("Handover completed.");
+      showSuccess("Handover completed");
       setHandoverDialogOpen(false);
       setHandoverTarget(null);
       resetHandoverForm();
@@ -783,16 +887,8 @@ export const HandoverProvider = ({
       );
     } catch (error) {
       console.error(error);
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof (error as { response?: { data?: { error?: string } } }).response
-          ?.data?.error === "string"
-          ? (error as { response?: { data?: { error?: string } } }).response
-              ?.data?.error
-          : undefined;
-      toast.error(message || "Failed to submit handover details.");
+      showSegmentErrorToast(error, "Failed to submit handover details.");
+      throw error;
     } finally {
       setHandoverLoading(false);
     }
@@ -809,9 +905,14 @@ export const HandoverProvider = ({
 
   const loadingByStatus = useMemo(() => {
     return SUPPLIER_STATUS_ORDER.reduce((acc, status) => {
-      acc[status] = status === activeSupplierStatus
-        ? Boolean(activeQuery?.isLoading || activeQuery?.isFetching || activeQuery?.isPending)
-        : false;
+      acc[status] =
+        status === activeSupplierStatus
+          ? Boolean(
+              activeQuery?.isLoading ||
+                activeQuery?.isFetching ||
+                activeQuery?.isPending
+            )
+          : false;
       return acc;
     }, {} as Record<SupplierShipmentStatus, boolean>);
   }, [activeQuery, activeSupplierStatus]);

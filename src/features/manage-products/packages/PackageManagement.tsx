@@ -61,10 +61,10 @@ import {
   type SensorType,
 } from "@/services/sensorTypeService";
 import type { ProductBatchSummary } from "@/types";
-import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { QRCodeGenerator } from "@/components/qr/QRCodeGenerator";
+import { useAppToast } from "@/hooks/useAppToast";
 
 type PackageFormState = {
   batchId: string;
@@ -142,7 +142,7 @@ const toProductionLabel = (value?: string | null) => {
 
 const deriveBatchProductionWindow = (batch: ProductBatchSummary) => {
   const start = toProductionLabel(
-    batch.productionStartTime ?? batch.productionStart,
+    batch.productionStartTime ?? batch.productionStart
   );
   const end = toProductionLabel(batch.productionEndTime ?? batch.productionEnd);
 
@@ -170,7 +170,9 @@ const deriveBatchProductionWindow = (batch: ProductBatchSummary) => {
     batch.batchNumber ??
     (batch.id ? `Batch ${batch.id}` : "Unnamed batch");
 
-  return detail ? `${productName} - ${detail}` : `${productName} - ${batchLabel}`;
+  return detail
+    ? `${productName} - ${detail}`
+    : `${productName} - ${batchLabel}`;
 };
 
 type SensorTypeSelectorProps = {
@@ -230,8 +232,8 @@ function SensorTypeSelector({
                 {loading
                   ? "Loading sensor types..."
                   : error
-                    ? "Failed to load sensor types"
-                    : "No sensor types found"}
+                  ? "Failed to load sensor types"
+                  : "No sensor types found"}
               </CommandEmpty>
               <CommandGroup>
                 {options.map((option) => {
@@ -303,8 +305,8 @@ function SensorTypeSelector({
 
 export function PackageManagement() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { uuid } = useAppStore();
+  const { showSuccess, showError } = useAppToast();
   const manufacturerUUID = uuid ?? "";
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -320,7 +322,8 @@ export function PackageManagement() {
   const [viewingPackage, setViewingPackage] = useState<PackageResponse | null>(
     null
   );
-  const [qrPreviewPackage, setQrPreviewPackage] = useState<PackageResponse | null>(null);
+  const [qrPreviewPackage, setQrPreviewPackage] =
+    useState<PackageResponse | null>(null);
   const [isSensorTypeDialogOpen, setIsSensorTypeDialogOpen] = useState(false);
   const [sensorTypeDialogContext, setSensorTypeDialogContext] = useState<
     "create" | "edit"
@@ -370,10 +373,7 @@ export function PackageManagement() {
       });
       setIsSensorTypeDialogOpen(false);
       setNewSensorTypeName("");
-      toast({
-        title: "Sensor type created",
-        description: `${data.name} is now available.`,
-      });
+      showSuccess("Sensor type created");
 
       if (sensorTypeDialogContext === "create") {
         setCreateForm((current) => ({
@@ -390,17 +390,15 @@ export function PackageManagement() {
       }
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to create sensor type",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to create sensor type"
+      );
     },
   });
 
   const batchLookup = useMemo(
     () => new Map(batches.map((batch) => [String(batch.id), batch])),
-    [batches],
+    [batches]
   );
 
   const batchOptions = useMemo(
@@ -409,7 +407,7 @@ export function PackageManagement() {
         value: String(batch.id),
         label: deriveBatchProductionWindow(batch),
       })),
-    [batches],
+    [batches]
   );
 
   const filteredPackages = useMemo(() => {
@@ -454,11 +452,7 @@ export function PackageManagement() {
     event.preventDefault();
     const trimmed = newSensorTypeName.trim();
     if (!trimmed) {
-      toast({
-        variant: "destructive",
-        title: "Name required",
-        description: "Enter a sensor type name.",
-      });
+      showError("Name required");
       return;
     }
     createSensorTypeMutation.mutate({ name: trimmed });
@@ -473,17 +467,12 @@ export function PackageManagement() {
       });
       setIsCreateDialogOpen(false);
       setCreateForm(emptyPackageForm());
-      toast({
-        title: "Package registered",
-        description: "The package was registered successfully.",
-      });
+      showSuccess("Package registered");
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to register package",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to register package"
+      );
     },
   });
 
@@ -496,36 +485,23 @@ export function PackageManagement() {
       });
       setEditingPackage(null);
       setEditForm({});
-      toast({
-        title: "Package updated",
-        description: "Package details saved successfully.",
-      });
+      showSuccess("Package updated");
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to update package",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to update package"
+      );
     },
   });
 
   const handleCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!manufacturerUUID) {
-      toast({
-        variant: "destructive",
-        title: "Manufacturer profile required",
-        description: "Sign in as a manufacturer to register packages.",
-      });
+      showError("Manufacturer profile required");
       return;
     }
     if (!createForm.batchId) {
-      toast({
-        variant: "destructive",
-        title: "Select batch",
-        description: "Each package must be linked to a batch.",
-      });
+      showError("Select batch");
       return;
     }
     createMutation.mutate({
@@ -666,12 +642,18 @@ export function PackageManagement() {
                       </p>
                     </TableCell>
                     <TableCell>
-                      <div className="text-foreground">{pkg.quantity ?? "N/A"}</div>
+                      <div className="text-foreground">
+                        {pkg.quantity ?? "N/A"}
+                      </div>
                     </TableCell>
                     <TableCell>{pkg.status ?? "Not specified"}</TableCell>
                     <TableCell>{sensorsToLabel(pkg.sensorTypes)}</TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => setQrPreviewPackage(pkg)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setQrPreviewPackage(pkg)}
+                      >
                         View QR
                       </Button>
                     </TableCell>
@@ -693,7 +675,9 @@ export function PackageManagement() {
                               packageCode: pkg.packageCode ?? "",
                               status: pkg.status,
                               notes: pkg.notes,
-                              sensorTypes: normalizeSensorArray(pkg.sensorTypes),
+                              sensorTypes: normalizeSensorArray(
+                                pkg.sensorTypes
+                              ),
                             });
                           }}
                         >
@@ -709,7 +693,7 @@ export function PackageManagement() {
         </div>
       </div>
     );
-  };;
+  };
 
   return (
     <section className="space-y-6">
@@ -1026,7 +1010,7 @@ export function PackageManagement() {
                   {viewingPackage.batch?.batchCode ??
                     (viewingPackage.batchId
                       ? batchLookup.get(String(viewingPackage.batchId))
-                        ?.batchCode || `Batch ${viewingPackage.batchId}`
+                          ?.batchCode || `Batch ${viewingPackage.batchId}`
                       : "Not linked")}
                 </p>
               </div>
@@ -1037,10 +1021,10 @@ export function PackageManagement() {
                     viewingPackage.batch?.product?.productName ??
                     (viewingPackage.batchId
                       ? batchLookup.get(String(viewingPackage.batchId))?.product
-                        ?.productName ??
-                      batchLookup.get(String(viewingPackage.batchId))?.product
-                        ?.name ??
-                      "Not linked"
+                          ?.productName ??
+                        batchLookup.get(String(viewingPackage.batchId))?.product
+                          ?.name ??
+                        "Not linked"
                       : "Not linked")}
                 </p>
               </div>
@@ -1100,14 +1084,19 @@ export function PackageManagement() {
         <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {qrPreviewPackage?.packageCode || `Package ${qrPreviewPackage?.id}`}
+              {qrPreviewPackage?.packageCode ||
+                `Package ${qrPreviewPackage?.id}`}
             </DialogTitle>
             <DialogDescription>Package QR code</DialogDescription>
           </DialogHeader>
           {qrPreviewPackage ? (
             <div className="space-y-3">
               <div className="flex justify-center">
-                <QRCodeGenerator data={getMockQrPayload(qrPreviewPackage)} title="Package QR" size={200} />
+                <QRCodeGenerator
+                  data={getMockQrPayload(qrPreviewPackage)}
+                  title="Package QR"
+                  size={200}
+                />
               </div>
               <div className="rounded-md border bg-muted/40 p-2 text-[11px] font-mono break-all">
                 {getMockQrPayload(qrPreviewPackage)}
@@ -1119,10 +1108,3 @@ export function PackageManagement() {
     </section>
   );
 }
-
-
-
-
-
-
-

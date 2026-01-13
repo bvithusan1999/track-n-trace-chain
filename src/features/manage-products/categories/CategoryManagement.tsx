@@ -2,13 +2,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { productCategoryService } from "@/services/productCategoryService";
 import type { ProductCategory } from "@/types";
-import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle } from "lucide-react";
+import { useAppToast } from "@/hooks/useAppToast";
 
 type CategoryFormState = {
   name: string;
@@ -43,15 +56,17 @@ const formatDetailedDateTime = (value?: string) => {
 
 export function CategoryManagement() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showSuccess, showError } = useAppToast();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CategoryFormState>(emptyForm);
 
-  const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
+  const [editingCategory, setEditingCategory] =
+    useState<ProductCategory | null>(null);
   const [editForm, setEditForm] = useState<CategoryFormState>(emptyForm);
 
-  const [viewingCategory, setViewingCategory] = useState<ProductCategory | null>(null);
+  const [viewingCategory, setViewingCategory] =
+    useState<ProductCategory | null>(null);
   const [categorySearch, setCategorySearch] = useState("");
 
   const {
@@ -65,53 +80,43 @@ export function CategoryManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => productCategoryService.create({ name: createForm.name.trim() }),
+    mutationFn: () =>
+      productCategoryService.create({ name: createForm.name.trim() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["productCategories"] });
       setCreateForm(emptyForm);
       setIsCreateDialogOpen(false);
-      toast({
-        title: "Category created",
-        description: "The category was created successfully.",
-      });
+      showSuccess("Category created");
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to create category",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to create category"
+      );
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (payload: { id: string; data: CategoryFormState }) =>
-      productCategoryService.update(payload.id, { name: payload.data.name.trim() }),
+      productCategoryService.update(payload.id, {
+        name: payload.data.name.trim(),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["productCategories"] });
       setEditingCategory(null);
       setEditForm(emptyForm);
-      toast({
-        title: "Category updated",
-        description: "The category was updated successfully.",
-      });
+      showSuccess("Category updated");
     },
     onError: (err: unknown) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to update category",
-        description: err instanceof Error ? err.message : "Unknown error",
-      });
+      showError(
+        err instanceof Error ? err.message : "Failed to update category"
+      );
     },
   });
 
   const handleCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!createForm.name.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Category name is required",
-      });
+      showError("Category name is required");
       return;
     }
     createMutation.mutate();
@@ -121,131 +126,145 @@ export function CategoryManagement() {
     event.preventDefault();
     if (!editingCategory) return;
     if (!editForm.name.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Category name is required",
-      });
+      showError("Category name is required");
       return;
     }
     updateMutation.mutate({ id: editingCategory.id, data: editForm });
   };
 
   const filteredCategories = useMemo(() => {
-  const term = categorySearch.trim().toLowerCase();
-  if (!term) return categories;
-  return categories.filter((category) =>
-    (category.name ?? "").toLowerCase().includes(term),
-  );
-}, [categories, categorySearch]);
+    const term = categorySearch.trim().toLowerCase();
+    if (!term) return categories;
+    return categories.filter((category) =>
+      (category.name ?? "").toLowerCase().includes(term)
+    );
+  }, [categories, categorySearch]);
 
-const tableContent = useMemo(() => {
-  const hasFilter = Boolean(categorySearch.trim());
-  if (isLoading) {
+  const tableContent = useMemo(() => {
+    const hasFilter = Boolean(categorySearch.trim());
+    if (isLoading) {
+      return (
+        <div className="overflow-x-auto rounded-lg border border-border/60">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <TableRow key={`category-skeleton-${index}`}>
+                  <TableCell>
+                    <Skeleton className="h-5 w-48" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-16" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {(error as Error)?.message ?? "Unable to load categories right now."}
+        </div>
+      );
+    }
+
+    if (!categories.length && !hasFilter) {
+      return (
+        <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
+          You have no categories yet. Create one to get started.
+        </div>
+      );
+    }
+
+    if (!filteredCategories.length) {
+      return (
+        <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
+          No categories match your current filter.
+        </div>
+      );
+    }
+
     return (
       <div className="overflow-x-auto rounded-lg border border-border/60">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 6 }).map((_, index) => (
-              <TableRow key={`category-skeleton-${index}`}>
-                <TableCell>
-                  <Skeleton className="h-5 w-48" />
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-2">
-                    <Skeleton className="h-8 w-16" />
-                    <Skeleton className="h-8 w-16" />
-                  </div>
-                </TableCell>
+        <div className="max-h-[60vh] overflow-y-auto">
+          <Table className="min-w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredCategories.map((category) => (
+                <TableRow key={category.id}>
+                  <TableCell>
+                    <div className="font-medium text-foreground">
+                      {category.name}
+                    </div>
+                    {category.description ? (
+                      <p className="text-sm text-muted-foreground">
+                        {category.description}
+                      </p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setViewingCategory(category)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setEditingCategory(category);
+                          setEditForm({
+                            name: category.name ?? "",
+                          });
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-        {(error as Error)?.message ?? "Unable to load categories right now."}
-      </div>
-    );
-  }
-
-  if (!categories.length && !hasFilter) {
-    return (
-      <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
-        You have no categories yet. Create one to get started.
-      </div>
-    );
-  }
-
-  if (!filteredCategories.length) {
-    return (
-      <div className="rounded-lg border border-border/60 p-6 text-center text-sm text-muted-foreground">
-        No categories match your current filter.
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-lg border border-border/60">
-      <div className="max-h-[60vh] overflow-y-auto">
-        <Table className="min-w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCategories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell>
-                  <div className="font-medium text-foreground">{category.name}</div>
-                  {category.description ? (
-                    <p className="text-sm text-muted-foreground">{category.description}</p>
-                  ) : null}
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setViewingCategory(category)}>
-                      View
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setEditingCategory(category);
-                        setEditForm({
-                          name: category.name ?? "",
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-}, [categories, categorySearch, error, filteredCategories, isError, isLoading]);
+  }, [
+    categories,
+    categorySearch,
+    error,
+    filteredCategories,
+    isError,
+    isLoading,
+  ]);
 
   return (
     <section className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Product Categories</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Product Categories
+          </h2>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:justify-end">
           <div className="sm:w-64">
@@ -272,7 +291,9 @@ const tableContent = useMemo(() => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Category</DialogTitle>
-            <DialogDescription>Provide a clear name so your team can reuse this category.</DialogDescription>
+            <DialogDescription>
+              Provide a clear name so your team can reuse this category.
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateSubmit}>
             <div className="space-y-2">
@@ -283,16 +304,31 @@ const tableContent = useMemo(() => {
                 id="category-name"
                 placeholder="e.g. COVID-19 Vaccines"
                 value={createForm.name}
-                onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
                 required
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending} className="gap-2">
-                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                className="gap-2"
+              >
+                {createMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 Create
               </Button>
             </div>
@@ -300,29 +336,50 @@ const tableContent = useMemo(() => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(editingCategory)} onOpenChange={(open) => (!open ? setEditingCategory(null) : null)}>
+      <Dialog
+        open={Boolean(editingCategory)}
+        onOpenChange={(open) => (!open ? setEditingCategory(null) : null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleEditSubmit}>
             <div className="space-y-2">
-              <label htmlFor="edit-category-name" className="text-sm font-medium">
+              <label
+                htmlFor="edit-category-name"
+                className="text-sm font-medium"
+              >
                 Name
               </label>
               <Input
                 id="edit-category-name"
                 value={editForm.name}
-                onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
                 required
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setEditingCategory(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingCategory(null)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending} className="gap-2">
-                {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              <Button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="gap-2"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 Save changes
               </Button>
             </div>
@@ -330,7 +387,10 @@ const tableContent = useMemo(() => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(viewingCategory)} onOpenChange={(open) => (!open ? setViewingCategory(null) : null)}>
+      <Dialog
+        open={Boolean(viewingCategory)}
+        onOpenChange={(open) => (!open ? setViewingCategory(null) : null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{viewingCategory?.name}</DialogTitle>
@@ -345,15 +405,25 @@ const tableContent = useMemo(() => {
               ) : null}
               <div className="grid gap-3 text-sm">
                 {[
-                  { label: "Created", value: formatDetailedDateTime(viewingCategory.createdAt) },
-                  { label: "Updated", value: formatDetailedDateTime(viewingCategory.updatedAt) },
+                  {
+                    label: "Created",
+                    value: formatDetailedDateTime(viewingCategory.createdAt),
+                  },
+                  {
+                    label: "Updated",
+                    value: formatDetailedDateTime(viewingCategory.updatedAt),
+                  },
                 ].map((detail) => (
                   <div
                     key={detail.label}
                     className="flex items-center justify-between rounded-lg border border-border/60 bg-background px-4 py-3"
                   >
-                    <span className="text-muted-foreground">{detail.label}</span>
-                    <span className="font-medium text-foreground">{detail.value}</span>
+                    <span className="text-muted-foreground">
+                      {detail.label}
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {detail.value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -364,8 +434,3 @@ const tableContent = useMemo(() => {
     </section>
   );
 }
-
-
-
-
-
