@@ -290,235 +290,241 @@ export function AlertTable({ apiEndpoint, columns }: AlertTableProps) {
       <div className="-mx-3 sm:mx-0 border sm:rounded-lg overflow-hidden shadow-sm bg-white">
         <div className="overflow-x-auto">
           <Table className="min-w-[600px] sm:min-w-0">
-          <TableHeader className="bg-gradient-to-r from-slate-100 to-slate-50 border-b">
-            <TableRow className="hover:bg-transparent">
-              {columns.includes("packageId") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Package ID
+            <TableHeader className="bg-gradient-to-r from-slate-100 to-slate-50 border-b">
+              <TableRow className="hover:bg-transparent">
+                {columns.includes("packageId") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Package ID
+                  </TableHead>
+                )}
+                {columns.includes("alertType") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Alert Type
+                  </TableHead>
+                )}
+                {columns.includes("severity") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Severity
+                  </TableHead>
+                )}
+                {columns.includes("shipmentId") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Shipment ID
+                  </TableHead>
+                )}
+                {columns.includes("segmentId") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Segment ID
+                  </TableHead>
+                )}
+                {columns.includes("location") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Location
+                  </TableHead>
+                )}
+                {columns.includes("breachTime") && (
+                  <TableHead className="font-semibold text-slate-700">
+                    Breach Time
+                  </TableHead>
+                )}
+                <TableHead className="font-semibold text-slate-700 text-center w-16">
+                  Action
                 </TableHead>
-              )}
-              {columns.includes("alertType") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Alert Type
-                </TableHead>
-              )}
-              {columns.includes("severity") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Severity
-                </TableHead>
-              )}
-              {columns.includes("shipmentId") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Shipment ID
-                </TableHead>
-              )}
-              {columns.includes("segmentId") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Segment ID
-                </TableHead>
-              )}
-              {columns.includes("location") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Location
-                </TableHead>
-              )}
-              {columns.includes("breachTime") && (
-                <TableHead className="font-semibold text-slate-700">
-                  Breach Time
-                </TableHead>
-              )}
-              <TableHead className="font-semibold text-slate-700 text-center w-16">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length + 1}
-                  className="text-center py-12"
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-900"></div>
-                    <span className="text-slate-600">Loading alerts...</span>
-                  </div>
-                </TableCell>
               </TableRow>
-            ) : alerts.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length + 1}
-                  className="text-center py-12 text-muted-foreground"
-                >
-                  <div className="space-y-2">
-                    <div className="text-lg">No alerts found</div>
-                    <div className="text-sm">
-                      Try adjusting your search criteria
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length + 1}
+                    className="text-center py-12"
+                  >
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-900"></div>
+                      <span className="text-slate-600">Loading alerts...</span>
                     </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              alerts.map((alert) => (
-                <TableRow
-                  key={alert.breachId}
-                  className={`hover:bg-slate-50 transition border-b ${getSeverityBgClass(
-                    alert.severity
-                  )}`}
-                >
-                  {columns.includes("packageId") && (
-                    <TableCell className="font-mono text-xs font-semibold text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-slate-100 px-2 py-1 rounded">
-                          {alert.packageId}
-                        </span>
-                        <button
-                          onClick={() =>
-                            copyToClipboard(alert.packageId, "packageId")
+                  </TableCell>
+                </TableRow>
+              ) : alerts.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length + 1}
+                    className="text-center py-12 text-muted-foreground"
+                  >
+                    <div className="space-y-2">
+                      <div className="text-lg">No alerts found</div>
+                      <div className="text-sm">
+                        Try adjusting your search criteria
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                alerts.map((alert) => (
+                  <TableRow
+                    key={alert.breachId}
+                    className={`hover:bg-slate-50 transition border-b ${getSeverityBgClass(
+                      alert.severity
+                    )}`}
+                  >
+                    {columns.includes("packageId") && (
+                      <TableCell className="font-mono text-xs font-semibold text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-slate-100 px-2 py-1 rounded">
+                            {alert.packageId}
+                          </span>
+                          <button
+                            onClick={() =>
+                              copyToClipboard(alert.packageId, "packageId")
+                            }
+                            className="text-slate-400 hover:text-slate-600"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {copied === "packageId" && (
+                          <span className="text-xs text-green-600">
+                            Copied!
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+                    {columns.includes("alertType") && (
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <span className="text-slate-600 flex-shrink-0">
+                            {getAlertTypeIcon(alert.alertType)}
+                          </span>
+                          <span className="text-sm font-medium text-slate-700">
+                            {alert.alertType}
+                          </span>
+                        </div>
+                      </TableCell>
+                    )}
+                    {columns.includes("severity") && (
+                      <TableCell>
+                        <Badge
+                          variant={getSeverityColor(alert.severity)}
+                          className={
+                            alert.severity === "WARNING"
+                              ? "bg-yellow-200 text-yellow-800 hover:bg-yellow-300"
+                              : ""
                           }
-                          className="text-slate-400 hover:text-slate-600"
                         >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </div>
-                      {copied === "packageId" && (
-                        <span className="text-xs text-green-600">Copied!</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {columns.includes("alertType") && (
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-600 flex-shrink-0">
-                          {getAlertTypeIcon(alert.alertType)}
-                        </span>
-                        <span className="text-sm font-medium text-slate-700">
-                          {alert.alertType}
-                        </span>
-                      </div>
-                    </TableCell>
-                  )}
-                  {columns.includes("severity") && (
-                    <TableCell>
-                      <Badge
-                        variant={getSeverityColor(alert.severity)}
-                        className={
-                          alert.severity === "WARNING"
-                            ? "bg-yellow-200 text-yellow-800 hover:bg-yellow-300"
-                            : ""
-                        }
-                      >
-                        {alert.severity}
-                      </Badge>
-                    </TableCell>
-                  )}
-                  {columns.includes("shipmentId") && (
-                    <TableCell className="font-mono text-xs font-semibold text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-slate-100 px-2 py-1 rounded max-w-xs overflow-hidden text-ellipsis">
-                          {alert.shipmentId ? alert.shipmentId : "N/A"}
-                        </span>
-                        {alert.shipmentId && (
-                          <button
-                            onClick={() =>
-                              copyToClipboard(alert.shipmentId!, "shipmentId")
-                            }
-                            className="text-slate-400 hover:text-slate-600 flex-shrink-0"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
+                          {alert.severity}
+                        </Badge>
+                      </TableCell>
+                    )}
+                    {columns.includes("shipmentId") && (
+                      <TableCell className="font-mono text-xs font-semibold text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-slate-100 px-2 py-1 rounded max-w-xs overflow-hidden text-ellipsis">
+                            {alert.shipmentId ? alert.shipmentId : "N/A"}
+                          </span>
+                          {alert.shipmentId && (
+                            <button
+                              onClick={() =>
+                                copyToClipboard(alert.shipmentId!, "shipmentId")
+                              }
+                              className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        {copied === "shipmentId" && (
+                          <span className="text-xs text-green-600">
+                            Copied!
+                          </span>
                         )}
-                      </div>
-                      {copied === "shipmentId" && (
-                        <span className="text-xs text-green-600">Copied!</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {columns.includes("segmentId") && (
-                    <TableCell className="font-mono text-xs font-semibold text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-slate-100 px-2 py-1 rounded max-w-xs overflow-hidden text-ellipsis">
-                          {alert.segmentId ? alert.segmentId : "N/A"}
-                        </span>
-                        {alert.segmentId && (
-                          <button
-                            onClick={() =>
-                              copyToClipboard(alert.segmentId!, "segmentId")
-                            }
-                            className="text-slate-400 hover:text-slate-600 flex-shrink-0"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
+                      </TableCell>
+                    )}
+                    {columns.includes("segmentId") && (
+                      <TableCell className="font-mono text-xs font-semibold text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-slate-100 px-2 py-1 rounded max-w-xs overflow-hidden text-ellipsis">
+                            {alert.segmentId ? alert.segmentId : "N/A"}
+                          </span>
+                          {alert.segmentId && (
+                            <button
+                              onClick={() =>
+                                copyToClipboard(alert.segmentId!, "segmentId")
+                              }
+                              className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        {copied === "segmentId" && (
+                          <span className="text-xs text-green-600">
+                            Copied!
+                          </span>
                         )}
-                      </div>
-                      {copied === "segmentId" && (
-                        <span className="text-xs text-green-600">Copied!</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {columns.includes("location") && (
-                    <TableCell>
+                      </TableCell>
+                    )}
+                    {columns.includes("location") && (
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          className="gap-1 text-xs h-7"
+                        >
+                          <a
+                            href={`https://www.google.com/maps?q=${alert.location.latitude},${alert.location.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MapPin className="h-3 w-3" />
+                            Map
+                          </a>
+                        </Button>
+                      </TableCell>
+                    )}
+                    {columns.includes("breachTime") && (
+                      <TableCell className="text-xs text-slate-700">
+                        <div className="space-y-1 font-medium">
+                          <div>
+                            {new Date(alert.breachTime).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {new Date(alert.breachTime).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              }
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    )}
+                    <TableCell className="text-center">
                       <Button
                         variant="outline"
                         size="sm"
-                        asChild
-                        className="gap-1 text-xs h-7"
+                        onClick={() => handleOpenAlert(alert)}
+                        className="gap-2 text-xs h-7 hover:bg-slate-100"
+                        title="View Details"
+                        disabled={enrichingAlert}
                       >
-                        <a
-                          href={`https://www.google.com/maps?q=${alert.location.latitude},${alert.location.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <MapPin className="h-3 w-3" />
-                          Map
-                        </a>
+                        <Eye className="h-3 w-3 text-slate-600" />
+                        <span>{enrichingAlert ? "Loading..." : "View"}</span>
                       </Button>
                     </TableCell>
-                  )}
-                  {columns.includes("breachTime") && (
-                    <TableCell className="text-xs text-slate-700">
-                      <div className="space-y-1 font-medium">
-                        <div>
-                          {new Date(alert.breachTime).toLocaleDateString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            }
-                          )}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {new Date(alert.breachTime).toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            }
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                  )}
-                  <TableCell className="text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenAlert(alert)}
-                      className="gap-2 text-xs h-7 hover:bg-slate-100"
-                      title="View Details"
-                      disabled={enrichingAlert}
-                    >
-                      <Eye className="h-3 w-3 text-slate-600" />
-                      <span>{enrichingAlert ? "Loading..." : "View"}</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
           </Table>
         </div>
       </div>
@@ -731,13 +737,17 @@ export function AlertTable({ apiEndpoint, columns }: AlertTableProps) {
                   </label>
                   <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-1">
                     <div className="bg-white rounded-lg border border-slate-300 px-2 sm:px-3 py-1.5 sm:py-2 flex-1 min-w-0">
-                      <span className="text-[10px] sm:text-xs text-slate-600">Lat</span>
+                      <span className="text-[10px] sm:text-xs text-slate-600">
+                        Lat
+                      </span>
                       <div className="text-[10px] sm:text-xs font-mono font-bold text-slate-900 truncate">
                         {selectedAlert.location.latitude.toFixed(4)}
                       </div>
                     </div>
                     <div className="bg-white rounded-lg border border-slate-300 px-2 sm:px-3 py-1.5 sm:py-2 flex-1 min-w-0">
-                      <span className="text-[10px] sm:text-xs text-slate-600">Long</span>
+                      <span className="text-[10px] sm:text-xs text-slate-600">
+                        Long
+                      </span>
                       <div className="text-[10px] sm:text-xs font-mono font-bold text-slate-900 truncate">
                         {selectedAlert.location.longitude.toFixed(4)}
                       </div>

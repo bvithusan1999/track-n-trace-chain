@@ -611,9 +611,13 @@ export function PackageManagement() {
                 <TableHead className="text-xs sm:text-sm">Package</TableHead>
                 <TableHead className="text-xs sm:text-sm">Quantity</TableHead>
                 <TableHead className="text-xs sm:text-sm">Status</TableHead>
-                <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Sensors</TableHead>
+                <TableHead className="text-xs sm:text-sm hidden sm:table-cell">
+                  Sensors
+                </TableHead>
                 <TableHead className="text-xs sm:text-sm">QR</TableHead>
-                <TableHead className="text-xs sm:text-sm text-right">Actions</TableHead>
+                <TableHead className="text-xs sm:text-sm text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -646,8 +650,12 @@ export function PackageManagement() {
                         {pkg.quantity ?? "N/A"}
                       </div>
                     </TableCell>
-                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm">{pkg.status ?? "Not specified"}</TableCell>
-                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">{sensorsToLabel(pkg.sensorTypes)}</TableCell>
+                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm">
+                      {pkg.status ?? "Not specified"}
+                    </TableCell>
+                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">
+                      {sensorsToLabel(pkg.sensorTypes)}
+                    </TableCell>
                     <TableCell className="py-2 sm:py-4">
                       <Button
                         size="sm"
@@ -702,7 +710,9 @@ export function PackageManagement() {
     <section className="space-y-4 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Packages</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
+            Packages
+          </h2>
           {/* <p className="text-sm text-muted-foreground">
             Register packages as they leave production and keep package metadata
             up to date.
@@ -739,14 +749,22 @@ export function PackageManagement() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Create Package</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Create Package
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Link a new package to its production batch.
             </DialogDescription>
           </DialogHeader>
-          <form className="space-y-3 sm:space-y-4" onSubmit={handleCreateSubmit}>
+          <form
+            className="space-y-3 sm:space-y-4"
+            onSubmit={handleCreateSubmit}
+          >
             <div className="space-y-1.5 sm:space-y-2">
-              <label htmlFor="package-batch" className="text-xs sm:text-sm font-medium">
+              <label
+                htmlFor="package-batch"
+                className="text-xs sm:text-sm font-medium"
+              >
                 Batch
               </label>
               <Select
@@ -771,7 +789,10 @@ export function PackageManagement() {
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <label htmlFor="package-mac" className="text-xs sm:text-sm font-medium">
+              <label
+                htmlFor="package-mac"
+                className="text-xs sm:text-sm font-medium"
+              >
                 Microprocessor MAC
               </label>
               <Input
@@ -841,8 +862,12 @@ export function PackageManagement() {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Edit Package</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Update package metadata.</DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">
+              Edit Package
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Update package metadata.
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-3 sm:space-y-4" onSubmit={handleEditSubmit}>
             <div className="space-y-1.5 sm:space-y-2">
@@ -955,14 +980,22 @@ export function PackageManagement() {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Add sensor type</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Add sensor type
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Create a reusable sensor type for your organisation.
             </DialogDescription>
           </DialogHeader>
-          <form className="space-y-3 sm:space-y-4" onSubmit={handleSensorTypeSubmit}>
+          <form
+            className="space-y-3 sm:space-y-4"
+            onSubmit={handleSensorTypeSubmit}
+          >
             <div className="space-y-1.5 sm:space-y-2">
-              <label htmlFor="new-sensor-type" className="text-xs sm:text-sm font-medium">
+              <label
+                htmlFor="new-sensor-type"
+                className="text-xs sm:text-sm font-medium"
+              >
                 Sensor type name
               </label>
               <Input
@@ -1012,7 +1045,9 @@ export function PackageManagement() {
             <DialogTitle className="text-lg sm:text-xl truncate">
               {viewingPackage?.packageCode || `Package ${viewingPackage?.id}`}
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Package details</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
+              Package details
+            </DialogDescription>
           </DialogHeader>
           {viewingPackage ? (
             <div className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm">
@@ -1099,7 +1134,9 @@ export function PackageManagement() {
               {qrPreviewPackage?.packageCode ||
                 `Package ${qrPreviewPackage?.id}`}
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Package QR code</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
+              Package QR code
+            </DialogDescription>
           </DialogHeader>
           {qrPreviewPackage ? (
             <div className="space-y-2.5 sm:space-y-3">

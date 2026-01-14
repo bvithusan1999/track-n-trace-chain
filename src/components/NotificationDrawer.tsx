@@ -119,7 +119,9 @@ export function NotificationDrawer() {
                 <div className="rounded-full bg-muted p-3 sm:p-4 mb-2 sm:mb-3">
                   <Bell className="h-6 w-6 sm:h-8 sm:w-8" />
                 </div>
-                <p className="text-xs sm:text-sm font-medium">No notifications yet</p>
+                <p className="text-xs sm:text-sm font-medium">
+                  No notifications yet
+                </p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground/70 mt-1">
                   You're all caught up!
                 </p>
@@ -254,7 +256,12 @@ function NotificationItem({
           </p>
 
           <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1">
-            <Badge className={cn("text-[10px] sm:text-xs font-medium", config.badgeBg)}>
+            <Badge
+              className={cn(
+                "text-[10px] sm:text-xs font-medium",
+                config.badgeBg
+              )}
+            >
               {notification.severity}
             </Badge>
             <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
@@ -343,19 +350,28 @@ function NotificationDetail({
             <SeverityIcon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base sm:text-lg">{notification.title}</h3>
+            <h3 className="font-semibold text-base sm:text-lg">
+              {notification.title}
+            </h3>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
               {notification.message}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8 p-0"
+          >
             <X className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
         </div>
 
         {/* Status Badge */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <Badge className={cn("text-xs sm:text-sm font-medium", config.badgeBg)}>
+          <Badge
+            className={cn("text-xs sm:text-sm font-medium", config.badgeBg)}
+          >
             {notification.severity}
           </Badge>
           <span className="text-[10px] sm:text-xs text-muted-foreground">
@@ -386,25 +402,32 @@ function NotificationDetail({
               {metadata.start_checkpoint && (
                 <div>
                   <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Start Checkpoint
+                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Start
+                    Checkpoint
                   </p>
-                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">{metadata.start_checkpoint}</p>
+                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
+                    {metadata.start_checkpoint}
+                  </p>
                 </div>
               )}
 
               {metadata.end_checkpoint && (
                 <div>
                   <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <Truck className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> End Checkpoint
+                    <Truck className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> End
+                    Checkpoint
                   </p>
-                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">{metadata.end_checkpoint}</p>
+                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
+                    {metadata.end_checkpoint}
+                  </p>
                 </div>
               )}
 
               {metadata.expected_ship_date && (
                 <div>
                   <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Expected Ship Date
+                    <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Expected
+                    Ship Date
                   </p>
                   <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
                     {new Date(metadata.expected_ship_date).toLocaleDateString()}
@@ -415,7 +438,8 @@ function NotificationDetail({
               {metadata.estimated_arrival_date && (
                 <div>
                   <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Estimated Arrival
+                    <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Estimated
+                    Arrival
                   </p>
                   <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
                     {new Date(
@@ -444,7 +468,9 @@ function NotificationDetail({
                   <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Allowed Range
                   </p>
-                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">{metadata.allowed_range}</p>
+                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
+                    {metadata.allowed_range}
+                  </p>
                 </div>
               )}
 

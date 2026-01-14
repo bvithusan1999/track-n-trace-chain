@@ -156,7 +156,9 @@ export function ManufacturerShipmentsSection() {
                       value={status}
                       className="flex items-center gap-1 text-xs sm:text-sm px-1 sm:px-3"
                     >
-                      <Icon className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${config.color}`} />
+                      <Icon
+                        className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${config.color}`}
+                      />
                       <span className="hidden sm:inline">{config.label}</span>
                     </TabsTrigger>
                   );

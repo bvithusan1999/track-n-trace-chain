@@ -91,14 +91,21 @@ export default function Products() {
       <main className="mx-auto max-w-6xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-10 space-y-4 sm:space-y-6">
         <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Products</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+              Products
+            </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Browse registered products, filter by category, and review
               handling requirements.
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="sm:size-default" onClick={handleRefresh}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="sm:size-default"
+              onClick={handleRefresh}
+            >
               Refresh
             </Button>
             {user?.role === "MANUFACTURER" && (

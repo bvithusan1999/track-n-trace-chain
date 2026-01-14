@@ -461,7 +461,9 @@ export default function Register() {
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Organization Type */}
             <div className="grid gap-2">
-              <Label htmlFor="type" className="text-sm">Organization Type</Label>
+              <Label htmlFor="type" className="text-sm">
+                Organization Type
+              </Label>
               <select
                 name="type"
                 value={form.type}
@@ -491,7 +493,9 @@ export default function Register() {
 
             {registerForOther && (
               <div className="mt-2">
-                <Label htmlFor="otherPublicKey" className="text-sm">Other Wallet Public Key</Label>
+                <Label htmlFor="otherPublicKey" className="text-sm">
+                  Other Wallet Public Key
+                </Label>
                 <Input
                   id="otherPublicKey"
                   name="otherPublicKey"
@@ -507,7 +511,9 @@ export default function Register() {
             {/* Identification */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-4">
               <div>
-                <Label htmlFor="legalName" className="text-sm">Legal Name</Label>
+                <Label htmlFor="legalName" className="text-sm">
+                  Legal Name
+                </Label>
                 <Input
                   id="legalName"
                   name="legalName"
@@ -519,7 +525,9 @@ export default function Register() {
                 />
               </div>
               <div>
-                <Label htmlFor="businessRegNo" className="text-sm">Business Reg. No</Label>
+                <Label htmlFor="businessRegNo" className="text-sm">
+                  Business Reg. No
+                </Label>
                 <Input
                   id="businessRegNo"
                   name="businessRegNo"
@@ -548,7 +556,9 @@ export default function Register() {
                 />
               </div>
               <div>
-                <Label htmlFor="email" className="text-sm">Email</Label>
+                <Label htmlFor="email" className="text-sm">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   name="email"
@@ -565,7 +575,9 @@ export default function Register() {
             {/* Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="personName" className="text-sm">Contact Person</Label>
+                <Label htmlFor="personName" className="text-sm">
+                  Contact Person
+                </Label>
                 <Input
                   id="personName"
                   name="personName"
@@ -577,7 +589,9 @@ export default function Register() {
                 />
               </div>
               <div>
-                <Label htmlFor="designation" className="text-sm">Designation</Label>
+                <Label htmlFor="designation" className="text-sm">
+                  Designation
+                </Label>
                 <Input
                   id="designation"
                   name="designation"
@@ -592,7 +606,9 @@ export default function Register() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="phone" className="text-sm">Phone</Label>
+                <Label htmlFor="phone" className="text-sm">
+                  Phone
+                </Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -604,7 +620,9 @@ export default function Register() {
                 />
               </div>
               <div>
-                <Label htmlFor="address" className="text-sm">Address</Label>
+                <Label htmlFor="address" className="text-sm">
+                  Address
+                </Label>
                 <Input
                   id="address"
                   name="address"
@@ -617,7 +635,9 @@ export default function Register() {
               </div>
             </div>
             <div>
-              <Label htmlFor="dateOfRegistration" className="text-sm">Date of Registration</Label>
+              <Label htmlFor="dateOfRegistration" className="text-sm">
+                Date of Registration
+              </Label>
               <Input
                 id="dateOfRegistration"
                 name="dateOfRegistration"
@@ -633,7 +653,9 @@ export default function Register() {
               <div className="space-y-3 sm:space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="checkpointName" className="text-sm">Checkpoint Name</Label>
+                    <Label htmlFor="checkpointName" className="text-sm">
+                      Checkpoint Name
+                    </Label>
                     <Input
                       id="checkpointName"
                       name="checkpointName"
@@ -661,7 +683,9 @@ export default function Register() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="checkpointLatitude" className="text-sm">Latitude</Label>
+                    <Label htmlFor="checkpointLatitude" className="text-sm">
+                      Latitude
+                    </Label>
                     <Input
                       id="checkpointLatitude"
                       name="checkpointLatitude"
@@ -673,7 +697,9 @@ export default function Register() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="checkpointLongitude" className="text-sm">Longitude</Label>
+                    <Label htmlFor="checkpointLongitude" className="text-sm">
+                      Longitude
+                    </Label>
                     <Input
                       id="checkpointLongitude"
                       name="checkpointLongitude"
@@ -687,7 +713,9 @@ export default function Register() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="checkpointCountry" className="text-sm">Country</Label>
+                    <Label htmlFor="checkpointCountry" className="text-sm">
+                      Country
+                    </Label>
                     <SearchableSelect
                       id="checkpointCountry"
                       value={form.checkpointCountry}
@@ -700,7 +728,9 @@ export default function Register() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="checkpointState" className="text-sm">State / Province</Label>
+                    <Label htmlFor="checkpointState" className="text-sm">
+                      State / Province
+                    </Label>
                     {form.checkpointCountry ? (
                       checkpointStateOptions.length > 0 ? (
                         <SearchableSelect
@@ -738,7 +768,9 @@ export default function Register() {
                     )}
                   </div>
                   <div className="md:col-span-2">
-                    <Label htmlFor="checkpointCity" className="text-sm">City</Label>
+                    <Label htmlFor="checkpointCity" className="text-sm">
+                      City
+                    </Label>
                     {form.checkpointCountry && form.checkpointState ? (
                       checkpointCityOptions.length > 0 ? (
                         <SearchableSelect
@@ -782,7 +814,10 @@ export default function Register() {
             {form.type === "MANUFACTURER" && (
               <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <Label htmlFor="productCategoriesManufactured" className="text-sm">
+                  <Label
+                    htmlFor="productCategoriesManufactured"
+                    className="text-sm"
+                  >
                     Product Categories (comma separated)
                   </Label>
                   <Input
@@ -814,7 +849,10 @@ export default function Register() {
             {["SUPPLIER", "CONSUMER"].includes(form.type) && (
               <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <Label htmlFor="productCategoriesSupplied" className="text-sm">
+                  <Label
+                    htmlFor="productCategoriesSupplied"
+                    className="text-sm"
+                  >
                     Product Categories (comma separated)
                   </Label>
                   <Input
@@ -840,7 +878,9 @@ export default function Register() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="notes" className="text-sm">Notes</Label>
+                  <Label htmlFor="notes" className="text-sm">
+                    Notes
+                  </Label>
                   <Textarea
                     id="notes"
                     name="notes"
@@ -857,7 +897,9 @@ export default function Register() {
             {/* Warehouse Fields */}
             {form.type === "WAREHOUSE" && (
               <div>
-                <Label htmlFor="officeAddress" className="text-sm">Office Address</Label>
+                <Label htmlFor="officeAddress" className="text-sm">
+                  Office Address
+                </Label>
                 <Input
                   id="officeAddress"
                   name="officeAddress"
@@ -870,7 +912,11 @@ export default function Register() {
               </div>
             )}
 
-            <Button type="submit" className="w-full mt-4 h-10 sm:h-11 text-sm sm:text-base" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full mt-4 h-10 sm:h-11 text-sm sm:text-base"
+              disabled={loading}
+            >
               {loading ? "Registering..." : "Register"}
             </Button>
           </form>

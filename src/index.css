@@ -166,13 +166,18 @@
   }
 
   /* Prevent horizontal overflow on mobile */
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
     max-width: 100vw;
   }
 
   /* Better touch targets for mobile */
-  button, a, input, select, textarea {
+  button,
+  a,
+  input,
+  select,
+  textarea {
     touch-action: manipulation;
   }
 

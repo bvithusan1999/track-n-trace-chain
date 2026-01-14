@@ -552,7 +552,9 @@ export default function QRScannerPage() {
                   1
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm sm:text-base font-bold text-slate-900">Scan QR</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-900">
+                    Scan QR
+                  </p>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1 sm:mt-1.5 leading-relaxed font-medium">
                     Point camera at label
                   </p>
@@ -566,7 +568,9 @@ export default function QRScannerPage() {
                   2
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm sm:text-base font-bold text-slate-900">Verify</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-900">
+                    Verify
+                  </p>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1 sm:mt-1.5 leading-relaxed font-medium">
                     Instant verification
                   </p>
@@ -580,7 +584,9 @@ export default function QRScannerPage() {
                   3
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm sm:text-base font-bold text-slate-900">Export</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-900">
+                    Export
+                  </p>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1 sm:mt-1.5 leading-relaxed font-medium">
                     Download as PDF
                   </p>
@@ -605,7 +611,9 @@ export default function QRScannerPage() {
             <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 py-8 sm:py-12">
               <Loader2 className="h-8 w-8 sm:h-12 sm:w-12 animate-spin text-primary" />
               <div className="text-center space-y-1 sm:space-y-2">
-                <p className="font-medium text-sm sm:text-base">Verifying Package</p>
+                <p className="font-medium text-sm sm:text-base">
+                  Verifying Package
+                </p>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   Checking blockchain and shipment data...
                 </p>
@@ -643,7 +651,10 @@ export default function QRScannerPage() {
                 >
                   Close
                 </Button>
-                <Button className="flex-1 text-sm h-9 sm:h-10" onClick={handleDownloadPdf}>
+                <Button
+                  className="flex-1 text-sm h-9 sm:h-10"
+                  onClick={handleDownloadPdf}
+                >
                   Download PDF
                 </Button>
               </div>

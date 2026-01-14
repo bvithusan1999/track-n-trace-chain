@@ -94,7 +94,9 @@ export default function Checkpoints() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Checkpoints</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+            Checkpoints
+          </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             Manage facility and route checkpoints
           </p>
@@ -107,14 +109,17 @@ export default function Checkpoints() {
           </DialogTrigger>
           <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-2xl max-h-[95vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Create Checkpoint</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">
+                Create Checkpoint
+              </DialogTitle>
               <DialogDescription className="text-xs sm:text-sm">
                 Register a new operational checkpoint
               </DialogDescription>
             </DialogHeader>
             <form
               onSubmit={onSubmit}
-              className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-2">
+              className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-2"
+            >
               <div className="md:col-span-2">
                 <label className="text-xs sm:text-sm font-medium">Name</label>
                 <Input
@@ -125,7 +130,9 @@ export default function Checkpoints() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="text-xs sm:text-sm font-medium">Address</label>
+                <label className="text-xs sm:text-sm font-medium">
+                  Address
+                </label>
                 <Textarea
                   value={form.address}
                   onChange={(e) =>
@@ -136,7 +143,9 @@ export default function Checkpoints() {
                 />
               </div>
               <div>
-                <label className="text-xs sm:text-sm font-medium">Latitude</label>
+                <label className="text-xs sm:text-sm font-medium">
+                  Latitude
+                </label>
                 <Input
                   value={form.latitude}
                   onChange={(e) =>
@@ -147,7 +156,9 @@ export default function Checkpoints() {
                 />
               </div>
               <div>
-                <label className="text-xs sm:text-sm font-medium">Longitude</label>
+                <label className="text-xs sm:text-sm font-medium">
+                  Longitude
+                </label>
                 <Input
                   value={form.longitude}
                   onChange={(e) =>
@@ -158,7 +169,9 @@ export default function Checkpoints() {
                 />
               </div>
               <div>
-                <label className="text-xs sm:text-sm font-medium">State/Province</label>
+                <label className="text-xs sm:text-sm font-medium">
+                  State/Province
+                </label>
                 <Input
                   value={form.state}
                   onChange={(e) => setForm({ ...form, state: e.target.value })}
@@ -167,7 +180,9 @@ export default function Checkpoints() {
                 />
               </div>
               <div>
-                <label className="text-xs sm:text-sm font-medium">Country</label>
+                <label className="text-xs sm:text-sm font-medium">
+                  Country
+                </label>
                 <Input
                   value={form.country}
                   onChange={(e) =>
@@ -205,7 +220,9 @@ export default function Checkpoints() {
         </CardHeader>
         <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
           {isLoading ? (
-            <p className="text-muted-foreground text-center py-6 sm:py-8 text-sm">Loading...</p>
+            <p className="text-muted-foreground text-center py-6 sm:py-8 text-sm">
+              Loading...
+            </p>
           ) : checkpoints.length === 0 ? (
             <p className="text-muted-foreground text-center py-6 sm:py-8 text-sm">
               No checkpoints found.
@@ -213,19 +230,26 @@ export default function Checkpoints() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {checkpoints.map((cp) => (
-                <div key={cp.id} className="border rounded-lg p-3 sm:p-4 space-y-1.5 sm:space-y-2">
+                <div
+                  key={cp.id}
+                  className="border rounded-lg p-3 sm:p-4 space-y-1.5 sm:space-y-2"
+                >
                   <div className="flex items-center gap-2 font-medium text-sm sm:text-base">
                     <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="truncate">{cp.name}</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{cp.address}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {cp.address}
+                  </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground">
                     {cp.latitude}, {cp.longitude}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground">
                     {cp.state ?? ""} {cp.country ?? ""}
                   </p>
-                  <p className="text-[10px] sm:text-xs">Type: {cp.checkpointType}</p>
+                  <p className="text-[10px] sm:text-xs">
+                    Type: {cp.checkpointType}
+                  </p>
                 </div>
               ))}
             </div>

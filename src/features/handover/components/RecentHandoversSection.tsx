@@ -20,7 +20,9 @@ export function RecentHandoversSection() {
             className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:p-4 text-xs sm:text-sm"
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
-              <p className="font-medium text-foreground truncate">{handover.productName}</p>
+              <p className="font-medium text-foreground truncate">
+                {handover.productName}
+              </p>
               <span className="text-[10px] sm:text-xs text-muted-foreground">
                 {formatDistanceToNow(handover.timestamp, { addSuffix: true })}
               </span>
@@ -31,7 +33,9 @@ export function RecentHandoversSection() {
             <p className="text-[10px] sm:text-xs text-muted-foreground">
               Checkpoint: {handover.checkpoint}
             </p>
-            <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs uppercase text-primary">{handover.status}</p>
+            <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs uppercase text-primary">
+              {handover.status}
+            </p>
           </div>
         ))}
       </CardContent>

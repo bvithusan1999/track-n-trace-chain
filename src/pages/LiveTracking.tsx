@@ -8,10 +8,34 @@ import { Thermometer, MapPin, Clock, Package } from "lucide-react";
 import type { TelemetryPoint } from "@/types";
 
 const mockTelemetryData: TelemetryPoint[] = [
-  { lat: 40.7128, lng: -74.006, tempC: 4.2, ts: Date.now() - 3600000, compliant: true },
-  { lat: 40.758, lng: -73.9855, tempC: 3.8, ts: Date.now() - 2700000, compliant: true },
-  { lat: 40.7614, lng: -73.9776, tempC: 4.5, ts: Date.now() - 1800000, compliant: true },
-  { lat: 40.7489, lng: -73.968, tempC: 3.5, ts: Date.now() - 900000, compliant: true },
+  {
+    lat: 40.7128,
+    lng: -74.006,
+    tempC: 4.2,
+    ts: Date.now() - 3600000,
+    compliant: true,
+  },
+  {
+    lat: 40.758,
+    lng: -73.9855,
+    tempC: 3.8,
+    ts: Date.now() - 2700000,
+    compliant: true,
+  },
+  {
+    lat: 40.7614,
+    lng: -73.9776,
+    tempC: 4.5,
+    ts: Date.now() - 1800000,
+    compliant: true,
+  },
+  {
+    lat: 40.7489,
+    lng: -73.968,
+    tempC: 3.5,
+    ts: Date.now() - 900000,
+    compliant: true,
+  },
   { lat: 40.7306, lng: -73.9352, tempC: 4.1, ts: Date.now(), compliant: true },
 ];
 
@@ -43,17 +67,30 @@ export default function LiveTracking() {
     <div className="space-y-4 sm:space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Live Tracking</h1>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">
+          Live Tracking
+        </h1>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          Monitor vaccine shipments in real-time with GPS and temperature tracking
+          Monitor vaccine shipments in real-time with GPS and temperature
+          tracking
         </p>
       </div>
 
       {/* Tabs Section */}
       <Tabs defaultValue="map" className="space-y-3 sm:space-y-4">
         <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="map" className="flex-1 sm:flex-none text-xs sm:text-sm">Map View</TabsTrigger>
-          <TabsTrigger value="telemetry" className="flex-1 sm:flex-none text-xs sm:text-sm">Temperature</TabsTrigger>
+          <TabsTrigger
+            value="map"
+            className="flex-1 sm:flex-none text-xs sm:text-sm"
+          >
+            Map View
+          </TabsTrigger>
+          <TabsTrigger
+            value="telemetry"
+            className="flex-1 sm:flex-none text-xs sm:text-sm"
+          >
+            Temperature
+          </TabsTrigger>
         </TabsList>
 
         {/* --- MAP TAB --- */}
@@ -63,7 +100,9 @@ export default function LiveTracking() {
             <div className="lg:col-span-2 order-2 lg:order-1">
               <Card>
                 <CardHeader className="p-3 sm:p-4 lg:p-6">
-                  <CardTitle className="text-sm sm:text-base">Shipment Location</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">
+                    Shipment Location
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-4 lg:p-6 pt-0">
                   <div className="h-[300px] sm:h-[400px] lg:h-[500px]">
@@ -77,7 +116,9 @@ export default function LiveTracking() {
             <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
               <Card>
                 <CardHeader className="p-3 sm:p-4">
-                  <CardTitle className="text-sm sm:text-base">Active Shipments</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">
+                    Active Shipments
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-4 pt-0 space-y-2 sm:space-y-3">
                   {activeShipments.map((shipment) => (
@@ -91,8 +132,15 @@ export default function LiveTracking() {
                       onClick={() => setSelectedShipment(shipment)}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm sm:text-base">{shipment.id}</span>
-                        <Badge variant="outline" className="text-[10px] sm:text-xs">{shipment.status}</Badge>
+                        <span className="font-semibold text-sm sm:text-base">
+                          {shipment.id}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] sm:text-xs"
+                        >
+                          {shipment.status}
+                        </Badge>
                       </div>
                       <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-1">
                         {shipment.product}
@@ -104,7 +152,9 @@ export default function LiveTracking() {
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          <span className="truncate">{shipment.destination}</span>
+                          <span className="truncate">
+                            {shipment.destination}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -118,29 +168,45 @@ export default function LiveTracking() {
 
               <Card>
                 <CardHeader className="p-3 sm:p-4">
-                  <CardTitle className="text-sm sm:text-base">Shipment Details</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">
+                    Shipment Details
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-4 pt-0 space-y-2 sm:space-y-3">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm text-muted-foreground">Product</p>
-                      <p className="font-medium text-xs sm:text-sm truncate">{selectedShipment.product}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Product
+                      </p>
+                      <p className="font-medium text-xs sm:text-sm truncate">
+                        {selectedShipment.product}
+                      </p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Batch Number</p>
-                    <p className="font-medium text-xs sm:text-sm">{selectedShipment.batchNumber}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Batch Number
+                    </p>
+                    <p className="font-medium text-xs sm:text-sm">
+                      {selectedShipment.batchNumber}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Current Temperature</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Current Temperature
+                    </p>
                     <p className="font-medium text-xl sm:text-2xl">
                       {selectedShipment.currentTemp}°C
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Status</p>
-                    <Badge className="mt-1 text-xs">{selectedShipment.status}</Badge>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Status
+                    </p>
+                    <Badge className="mt-1 text-xs">
+                      {selectedShipment.status}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>

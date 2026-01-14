@@ -410,44 +410,61 @@ const Settings = () => {
             ) : (
               <div className="space-y-2 sm:space-y-3">
                 <div>
-                  <p className="text-muted-foreground text-[10px] sm:text-xs">Organization</p>
+                  <p className="text-muted-foreground text-[10px] sm:text-xs">
+                    Organization
+                  </p>
                   <p className="text-sm sm:text-base font-medium truncate">
                     {registration?.identification.legalName || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-[10px] sm:text-xs">Registration Type</p>
-                  <Badge variant="secondary" className="mt-1 text-[10px] sm:text-xs">
+                  <p className="text-muted-foreground text-[10px] sm:text-xs">
+                    Registration Type
+                  </p>
+                  <Badge
+                    variant="secondary"
+                    className="mt-1 text-[10px] sm:text-xs"
+                  >
                     {registration?.type || "N/A"}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-[10px] sm:text-xs">Contact Person</p>
+                  <p className="text-muted-foreground text-[10px] sm:text-xs">
+                    Contact Person
+                  </p>
                   <p className="text-sm sm:text-base font-medium">
                     {registration?.contact.personName || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-[10px] sm:text-xs">Email</p>
+                  <p className="text-muted-foreground text-[10px] sm:text-xs">
+                    Email
+                  </p>
                   <p className="text-sm sm:text-base font-medium truncate">
                     {registration?.contact.email || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-[10px] sm:text-xs">Phone</p>
+                  <p className="text-muted-foreground text-[10px] sm:text-xs">
+                    Phone
+                  </p>
                   <p className="text-sm sm:text-base font-medium">
                     {registration?.contact.phone || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-[10px] sm:text-xs">Address</p>
+                  <p className="text-muted-foreground text-[10px] sm:text-xs">
+                    Address
+                  </p>
                   <p className="text-sm sm:text-base font-medium line-clamp-2">
                     {registration?.contact.address || "—"}
                   </p>
                 </div>
                 {user?.role && (
                   <div>
-                    <p className="text-muted-foreground text-[10px] sm:text-xs">Role</p>
+                    <p className="text-muted-foreground text-[10px] sm:text-xs">
+                      Role
+                    </p>
                     <Badge variant="outline" className="mt-1">
                       {user.role}
                     </Badge>
@@ -605,7 +622,9 @@ const Settings = () => {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-4xl max-h-[90vh] rounded-xl sm:rounded-lg p-3 sm:p-6">
           <DialogHeader className="pb-2 sm:pb-4">
-            <DialogTitle className="text-base sm:text-lg">Edit Registration Profile</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              Edit Registration Profile
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Update your organization information. Changes are saved to the
               registry.
@@ -888,7 +907,9 @@ const Settings = () => {
               {/* Checkpoint Location Card */}
               <Card>
                 <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-base">Facility Location</CardTitle>
+                  <CardTitle className="text-sm sm:text-base">
+                    Facility Location
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-4 pt-0 space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

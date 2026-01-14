@@ -203,7 +203,9 @@ export function CategoryManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs sm:text-sm">Category</TableHead>
-                <TableHead className="text-xs sm:text-sm text-right">Actions</TableHead>
+                <TableHead className="text-xs sm:text-sm text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -281,7 +283,10 @@ export function CategoryManagement() {
               className="h-9 sm:h-10 text-sm"
             />
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2 h-9 sm:h-10 text-sm w-full sm:w-auto">
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="gap-2 h-9 sm:h-10 text-sm w-full sm:w-auto"
+          >
             <PlusCircle className="h-4 w-4" />
             Create Category
           </Button>
@@ -293,14 +298,22 @@ export function CategoryManagement() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Create Category</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Create Category
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Provide a clear name so your team can reuse this category.
             </DialogDescription>
           </DialogHeader>
-          <form className="space-y-3 sm:space-y-4" onSubmit={handleCreateSubmit}>
+          <form
+            className="space-y-3 sm:space-y-4"
+            onSubmit={handleCreateSubmit}
+          >
             <div className="space-y-1.5 sm:space-y-2">
-              <label htmlFor="category-name" className="text-xs sm:text-sm font-medium">
+              <label
+                htmlFor="category-name"
+                className="text-xs sm:text-sm font-medium"
+              >
                 Name
               </label>
               <Input
@@ -347,7 +360,9 @@ export function CategoryManagement() {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Edit Category</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Edit Category
+            </DialogTitle>
           </DialogHeader>
           <form className="space-y-3 sm:space-y-4" onSubmit={handleEditSubmit}>
             <div className="space-y-1.5 sm:space-y-2">
@@ -400,8 +415,12 @@ export function CategoryManagement() {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl truncate">{viewingCategory?.name}</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Category details</DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl truncate">
+              {viewingCategory?.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Category details
+            </DialogDescription>
           </DialogHeader>
           {viewingCategory ? (
             <div className="space-y-3 sm:space-y-4">

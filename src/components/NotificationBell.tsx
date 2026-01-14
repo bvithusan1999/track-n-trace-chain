@@ -80,11 +80,16 @@ export function NotificationBell() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] p-0 shadow-xl" align="end">
+        <PopoverContent
+          className="w-[calc(100vw-2rem)] sm:w-[420px] max-w-[420px] p-0 shadow-xl"
+          align="end"
+        >
           <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-gradient-to-r from-primary/5 to-primary/10">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              <h3 className="font-semibold text-base sm:text-lg">Notifications</h3>
+              <h3 className="font-semibold text-base sm:text-lg">
+                Notifications
+              </h3>
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="ml-1 text-xs">
                   {unreadCount} new
@@ -109,7 +114,9 @@ export function NotificationBell() {
                 <div className="rounded-full bg-muted p-3 sm:p-4 mb-2 sm:mb-3">
                   <Bell className="h-6 w-6 sm:h-8 sm:w-8" />
                 </div>
-                <p className="text-xs sm:text-sm font-medium">No notifications yet</p>
+                <p className="text-xs sm:text-sm font-medium">
+                  No notifications yet
+                </p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground/70 mt-1">
                   You're all caught up!
                 </p>
@@ -242,7 +249,12 @@ function NotificationItem({
           </p>
 
           <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1">
-            <Badge className={cn("text-[10px] sm:text-xs font-medium", config.badgeBg)}>
+            <Badge
+              className={cn(
+                "text-[10px] sm:text-xs font-medium",
+                config.badgeBg
+              )}
+            >
               {notification.severity}
             </Badge>
             <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
@@ -337,7 +349,12 @@ function NotificationDetailDialog({
                 {notification.title}
               </DialogTitle>
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <Badge className={cn("text-[10px] sm:text-xs font-medium", config.badgeBg)}>
+                <Badge
+                  className={cn(
+                    "text-[10px] sm:text-xs font-medium",
+                    config.badgeBg
+                  )}
+                >
                   {notification.severity}
                 </Badge>
                 <span className="text-[10px] sm:text-xs text-muted-foreground">
@@ -357,8 +374,15 @@ function NotificationDetailDialog({
 
           {notification.metadata &&
             Object.keys(notification.metadata).length > 0 && (
-              <div className={cn("rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3", config.bgColor)}>
-                <h4 className="font-semibold text-xs sm:text-sm">Additional Details</h4>
+              <div
+                className={cn(
+                  "rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3",
+                  config.bgColor
+                )}
+              >
+                <h4 className="font-semibold text-xs sm:text-sm">
+                  Additional Details
+                </h4>
                 <div className="space-y-2 sm:space-y-3">
                   {/* Shipment ID - Always show first if present */}
                   {(notification.shipmentId ||

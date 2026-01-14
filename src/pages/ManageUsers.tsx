@@ -50,12 +50,24 @@ export default function ManageUsers() {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
-      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Manage Users</h1>
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+        Manage Users
+      </h1>
 
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="mb-3 sm:mb-4 w-full sm:w-auto">
-          <TabsTrigger value="users" className="flex-1 sm:flex-none text-xs sm:text-sm">Users</TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1 sm:flex-none text-xs sm:text-sm">Pending</TabsTrigger>
+          <TabsTrigger
+            value="users"
+            className="flex-1 sm:flex-none text-xs sm:text-sm"
+          >
+            Users
+          </TabsTrigger>
+          <TabsTrigger
+            value="pending"
+            className="flex-1 sm:flex-none text-xs sm:text-sm"
+          >
+            Pending
+          </TabsTrigger>
         </TabsList>
 
         {/* ✅ Approved Users */}
@@ -65,13 +77,17 @@ export default function ManageUsers() {
               <Loader2 className="animate-spin mr-2 h-4 w-4" /> Loading users...
             </div>
           ) : users?.length === 0 ? (
-            <p className="text-xs sm:text-sm text-muted-foreground">No users found.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              No users found.
+            </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {users.map((user: any) => (
                 <Card key={user.id} className="shadow-sm">
                   <CardHeader className="p-3 sm:p-4">
-                    <CardTitle className="text-sm sm:text-base">{user.reg_type}</CardTitle>
+                    <CardTitle className="text-sm sm:text-base">
+                      {user.reg_type}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-4 pt-0 space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                     <p className="truncate">

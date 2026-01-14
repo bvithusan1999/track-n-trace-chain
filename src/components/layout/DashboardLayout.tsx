@@ -37,27 +37,27 @@ export const DashboardLayout = () => {
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (isMobile && mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [isMobile, mobileMenuOpen]);
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Top Header - Fixed */}
-      <Header 
+      <Header
         onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         isMobile={isMobile}
       />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <Sidebar 
-          collapsed={collapsed} 
+        <Sidebar
+          collapsed={collapsed}
           setCollapsed={setCollapsed}
           isMobile={isMobile}
           mobileMenuOpen={mobileMenuOpen}
@@ -66,7 +66,7 @@ export const DashboardLayout = () => {
 
         {/* Mobile overlay */}
         {isMobile && mobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
@@ -75,13 +75,13 @@ export const DashboardLayout = () => {
         {/* Main content area - Scrollable */}
         <main
           className={`flex-1 overflow-y-auto overflow-x-hidden transition-all duration-300 ${
-            isMobile 
-              ? "p-3 sm:p-4" 
+            isMobile
+              ? "p-3 sm:p-4"
               : isTablet
-                ? "ml-20 p-4 md:p-6"
-                : collapsed 
-                  ? "ml-20 p-6 lg:p-10" 
-                  : "ml-64 p-6 lg:p-10"
+              ? "ml-20 p-4 md:p-6"
+              : collapsed
+              ? "ml-20 p-6 lg:p-10"
+              : "ml-64 p-6 lg:p-10"
           }`}
         >
           <div className="max-w-full">

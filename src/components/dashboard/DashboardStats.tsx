@@ -146,7 +146,9 @@ export function DashboardStats({ dashboardData }: DashboardStatsProps) {
                 <div
                   className={`rounded-xl sm:rounded-2xl p-2 sm:p-3 ${theme.iconBg} shadow-inner transition-transform group-hover:scale-110`}
                 >
-                  <Icon className={`h-4 w-4 sm:h-6 sm:w-6 ${theme.iconColor}`} />
+                  <Icon
+                    className={`h-4 w-4 sm:h-6 sm:w-6 ${theme.iconColor}`}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground tabular-nums">

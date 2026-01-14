@@ -16,9 +16,9 @@ export function ViewShipmentButton({
   segmentId,
 }: ViewShipmentButtonProps) {
   const [open, setOpen] = useState(false);
-  const [resolvedShipmentId, setResolvedShipmentId] = useState<string | undefined>(
-    shipmentId
-  );
+  const [resolvedShipmentId, setResolvedShipmentId] = useState<
+    string | undefined
+  >(shipmentId);
 
   // Keep resolved ID in sync if prop changes
   useEffect(() => {

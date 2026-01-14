@@ -51,7 +51,9 @@ export function ViewShipmentDialog({
           <div className="flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <div className="space-y-1">
-              <DialogTitle className="text-base sm:text-lg">Loading shipment...</DialogTitle>
+              <DialogTitle className="text-base sm:text-lg">
+                Loading shipment...
+              </DialogTitle>
               <DialogDescription className="text-xs sm:text-sm">
                 Fetching shipment details. Please wait.
               </DialogDescription>
@@ -335,8 +337,10 @@ export function ViewShipmentDialog({
               </DialogTitle>
               <DialogDescription className="mt-1.5 sm:mt-2 text-xs sm:text-sm">
                 ID:{" "}
-                <span className="font-mono font-semibold truncate">{shipment.id}</span> •
-                Created{" "}
+                <span className="font-mono font-semibold truncate">
+                  {shipment.id}
+                </span>{" "}
+                • Created{" "}
                 {shipment.created_at
                   ? formatDistanceToNow(new Date(shipment.created_at), {
                       addSuffix: true,
@@ -401,11 +405,17 @@ export function ViewShipmentDialog({
               </CardHeader>
               <CardContent className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 p-3 sm:p-6">
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Company</p>
-                  <p className="font-bold text-base sm:text-lg">{manufacturerName}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                    Company
+                  </p>
+                  <p className="font-bold text-base sm:text-lg">
+                    {manufacturerName}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">ID</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                    ID
+                  </p>
                   <p className="font-mono text-xs sm:text-sm bg-gray-100 rounded px-2 py-1 truncate">
                     {shipment.manufacturer_uuid}
                   </p>
@@ -422,11 +432,17 @@ export function ViewShipmentDialog({
               </CardHeader>
               <CardContent className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 p-3 sm:p-6">
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Consumer</p>
-                  <p className="font-bold text-base sm:text-lg">{consumerName}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                    Consumer
+                  </p>
+                  <p className="font-bold text-base sm:text-lg">
+                    {consumerName}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">ID</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                    ID
+                  </p>
                   <p className="font-mono text-xs sm:text-sm bg-gray-100 rounded px-2 py-1 truncate">
                     {shipment.consumer_uuid}
                   </p>

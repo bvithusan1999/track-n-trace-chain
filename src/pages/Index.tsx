@@ -211,7 +211,12 @@ const ManufacturerDashboard = ({
               </p>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              <Button variant="outline" size="sm" className="sm:size-default" onClick={() => navigate("/qr-scan")}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:size-default"
+                onClick={() => navigate("/qr-scan")}
+              >
                 Scan QR
               </Button>
             </div>
@@ -257,7 +262,9 @@ const ManufacturerDashboard = ({
         <Card className="border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background shadow-card">
           <CardHeader className="p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <CardTitle className="text-base sm:text-lg">Recent shipments</CardTitle>
+              <CardTitle className="text-base sm:text-lg">
+                Recent shipments
+              </CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">
                 Latest shipment activity
               </p>
@@ -268,7 +275,8 @@ const ManufacturerDashboard = ({
               onClick={() => navigate("/shipment")}
               className="text-primary self-start sm:self-auto"
             >
-              View all <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1" />
+              View all{" "}
+              <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1" />
             </Button>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 lg:p-6 pt-0 space-y-3">

@@ -749,7 +749,9 @@ export function CreateShipmentDialog() {
           <div className="space-y-2 sm:space-y-3 rounded-lg border border-border/60 p-3 sm:p-4 bg-card shadow-sm">
             <div className="flex items-center gap-2 mb-1 sm:mb-2">
               <Package className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              <p className="text-xs sm:text-sm font-semibold">Select Packages</p>
+              <p className="text-xs sm:text-sm font-semibold">
+                Select Packages
+              </p>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-3">
               Choose the package UUIDs that should be included in this shipment
@@ -869,7 +871,9 @@ export function CreateShipmentDialog() {
           <div className="space-y-2 sm:space-y-3 rounded-lg border border-border/60 p-3 sm:p-4 bg-card shadow-sm">
             <div className="flex items-center gap-2 mb-1 sm:mb-2">
               <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              <p className="text-xs sm:text-sm font-semibold">Route Checkpoint Legs</p>
+              <p className="text-xs sm:text-sm font-semibold">
+                Route Checkpoint Legs
+              </p>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-3">
               Define the shipment route from your checkpoint to the consumer.
@@ -960,12 +964,18 @@ export function CreateShipmentDialog() {
                         <label className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 sm:gap-1.5">
                           <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           Start Checkpoint
-                          {startLocked && <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+                          {startLocked && (
+                            <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          )}
                           {isFirstLeg && (
-                            <span className="text-[10px] sm:text-xs ml-1">(Manufacturer)</span>
+                            <span className="text-[10px] sm:text-xs ml-1">
+                              (Manufacturer)
+                            </span>
                           )}
                           {isMiddleLeg && (
-                            <span className="text-[10px] sm:text-xs ml-1">(Warehouse)</span>
+                            <span className="text-[10px] sm:text-xs ml-1">
+                              (Warehouse)
+                            </span>
                           )}
                         </label>
                         {loadingStart ? (
@@ -1000,7 +1010,9 @@ export function CreateShipmentDialog() {
                             }
                             disabled={startLocked}
                             title={
-                              leg.startId ? formatCheckpointFull(selectedStart) : undefined
+                              leg.startId
+                                ? formatCheckpointFull(selectedStart)
+                                : undefined
                             }
                           >
                             <SelectTrigger
@@ -1065,12 +1077,18 @@ export function CreateShipmentDialog() {
                         <label className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 sm:gap-1.5">
                           <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           End Checkpoint
-                          {endLocked && <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+                          {endLocked && (
+                            <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          )}
                           {isLastLeg && (
-                            <span className="text-[10px] sm:text-xs ml-1">(Consumer)</span>
+                            <span className="text-[10px] sm:text-xs ml-1">
+                              (Consumer)
+                            </span>
                           )}
                           {!isLastLeg && (
-                            <span className="text-[10px] sm:text-xs ml-1">(Warehouse)</span>
+                            <span className="text-[10px] sm:text-xs ml-1">
+                              (Warehouse)
+                            </span>
                           )}
                         </label>
                         {loadingEnd ? (
@@ -1118,7 +1136,9 @@ export function CreateShipmentDialog() {
                             }
                             disabled={endLocked}
                             title={
-                              leg.endId ? formatCheckpointFull(selectedEnd) : undefined
+                              leg.endId
+                                ? formatCheckpointFull(selectedEnd)
+                                : undefined
                             }
                           >
                             <SelectTrigger

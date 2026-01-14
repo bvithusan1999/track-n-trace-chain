@@ -261,8 +261,12 @@ export function ProductManagement() {
               <TableRow>
                 <TableHead className="text-xs sm:text-sm">Product</TableHead>
                 <TableHead className="text-xs sm:text-sm">Category</TableHead>
-                <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Temperature range</TableHead>
-                <TableHead className="text-xs sm:text-sm text-right">Actions</TableHead>
+                <TableHead className="text-xs sm:text-sm hidden sm:table-cell">
+                  Temperature range
+                </TableHead>
+                <TableHead className="text-xs sm:text-sm text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -285,8 +289,12 @@ export function ProductManagement() {
                         {product.handlingInstructions || "No handling notes"}
                       </p>
                     </TableCell>
-                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm">{categoryLabel}</TableCell>
-                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">{tempLabel}</TableCell>
+                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm">
+                      {categoryLabel}
+                    </TableCell>
+                    <TableCell className="py-2 sm:py-4 text-xs sm:text-sm hidden sm:table-cell">
+                      {tempLabel}
+                    </TableCell>
                     <TableCell className="py-2 sm:py-4">
                       <div className="flex justify-end gap-1 sm:gap-2">
                         <Button
@@ -335,7 +343,9 @@ export function ProductManagement() {
     <section className="space-y-4 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Products</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
+            Products
+          </h2>
         </div>
         <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center">
           <div className="w-full sm:w-48">
@@ -359,7 +369,10 @@ export function ProductManagement() {
               onValueChange={setCategoryFilter}
               disabled={loadingCategories && categories.length === 0}
             >
-              <SelectTrigger id="product-category-filter" className="h-9 sm:h-10">
+              <SelectTrigger
+                id="product-category-filter"
+                className="h-9 sm:h-10"
+              >
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
@@ -372,7 +385,10 @@ export function ProductManagement() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2 h-9 sm:h-10 text-sm w-full sm:w-auto">
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="gap-2 h-9 sm:h-10 text-sm w-full sm:w-auto"
+          >
             <PlusCircle className="h-4 w-4" />
             Create Product
           </Button>
@@ -384,14 +400,22 @@ export function ProductManagement() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Create Product</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Create Product
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Capture the critical handling details for your new product.
             </DialogDescription>
           </DialogHeader>
-          <form className="space-y-3 sm:space-y-4" onSubmit={handleCreateSubmit}>
+          <form
+            className="space-y-3 sm:space-y-4"
+            onSubmit={handleCreateSubmit}
+          >
             <div className="space-y-1.5 sm:space-y-2">
-              <label htmlFor="product-name" className="text-xs sm:text-sm font-medium">
+              <label
+                htmlFor="product-name"
+                className="text-xs sm:text-sm font-medium"
+              >
                 Product name
               </label>
               <Input
@@ -409,7 +433,10 @@ export function ProductManagement() {
               />
             </div>
             <div className="space-y-1.5 sm:space-y-2">
-              <label htmlFor="product-category" className="text-xs sm:text-sm font-medium">
+              <label
+                htmlFor="product-category"
+                className="text-xs sm:text-sm font-medium"
+              >
                 Category
               </label>
               <Select
@@ -526,7 +553,9 @@ export function ProductManagement() {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Edit Product</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Edit Product
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Adjust product details to keep information accurate.
             </DialogDescription>
@@ -670,8 +699,12 @@ export function ProductManagement() {
       >
         <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl truncate">{viewingProduct?.productName}</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Product details</DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl truncate">
+              {viewingProduct?.productName}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Product details
+            </DialogDescription>
           </DialogHeader>
           {viewingProduct ? (
             <div className="space-y-3 sm:space-y-4">
