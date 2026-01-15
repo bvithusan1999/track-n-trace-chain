@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
-import { shipmentService, type CreateShipmentRequest } from "@/services/shipmentService";
+import {
+  shipmentService,
+  type CreateShipmentRequest,
+} from "@/services/shipmentService";
 import type { ManufacturerShipmentRecord, ShipmentLegInput } from "../types";
 
 type EditShipmentButtonProps = {
@@ -28,10 +31,13 @@ const DEFAULT_LEG: ShipmentLegInput = {
   requiredAction: "",
 };
 
-export function EditShipmentButton({ shipment, onUpdated }: EditShipmentButtonProps) {
+export function EditShipmentButton({
+  shipment,
+  onUpdated,
+}: EditShipmentButtonProps) {
   const [open, setOpen] = useState(false);
   const [dest, setDest] = useState<string>(
-    shipment.destinationPartyUUID ?? shipment.toUUID ?? "",
+    shipment.destinationPartyUUID ?? shipment.toUUID ?? ""
   );
   const [legs, setLegs] = useState<ShipmentLegInput[]>(
     (shipment.checkpoints ?? []).map((checkpoint) => ({
@@ -41,7 +47,7 @@ export function EditShipmentButton({ shipment, onUpdated }: EditShipmentButtonPr
       expectedShip: checkpoint.expected_ship_date ?? "",
       timeTolerance: checkpoint.time_tolerance ?? "",
       requiredAction: checkpoint.required_action ?? "",
-    })),
+    }))
   );
 
   const updateMutation = useMutation({
@@ -69,7 +75,9 @@ export function EditShipmentButton({ shipment, onUpdated }: EditShipmentButtonPr
         start_checkpoint_id: Number.isFinite(Number(leg.startId))
           ? Number(leg.startId)
           : leg.startId,
-        end_checkpoint_id: Number.isFinite(Number(leg.endId)) ? Number(leg.endId) : leg.endId,
+        end_checkpoint_id: Number.isFinite(Number(leg.endId))
+          ? Number(leg.endId)
+          : leg.endId,
         estimated_arrival_date: toISO(leg.estArrival),
         time_tolerance: leg.timeTolerance || undefined,
         expected_ship_date: toISO(leg.expectedShip),
@@ -85,7 +93,7 @@ export function EditShipmentButton({ shipment, onUpdated }: EditShipmentButtonPr
 
   const updateLeg = (index: number, patch: Partial<ShipmentLegInput>) => {
     setLegs((prev) =>
-      prev.map((leg, idx) => (idx === index ? { ...leg, ...patch } : leg)),
+      prev.map((leg, idx) => (idx === index ? { ...leg, ...patch } : leg))
     );
   };
 
@@ -94,66 +102,103 @@ export function EditShipmentButton({ shipment, onUpdated }: EditShipmentButtonPr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+        >
           Edit
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="mx-2 w-[calc(100%-1rem)] sm:w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl sm:rounded-lg p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Edit Shipment</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">
+            Edit Shipment
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="text-sm font-medium">Destination Party UUID</label>
-            <Input value={dest} onChange={(event) => setDest(event.target.value)} />
+            <label className="text-xs sm:text-sm font-medium">
+              Destination Party UUID
+            </label>
+            <Input
+              value={dest}
+              onChange={(event) => setDest(event.target.value)}
+              className="h-9 sm:h-10 text-sm"
+            />
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Route Legs</p>
+          <div className="space-y-2 sm:space-y-3">
+            <p className="text-xs sm:text-sm font-medium">Route Legs</p>
             {legs.map((leg, index) => (
               <div
                 key={`edit-leg-${index}`}
-                className="grid grid-cols-1 gap-2 rounded-md border p-3 md:grid-cols-2"
+                className="grid grid-cols-1 gap-2 sm:gap-3 rounded-md border p-2 sm:p-3 md:grid-cols-2"
               >
                 <div>
-                  <label className="text-xs text-muted-foreground">Start Checkpoint</label>
+                  <label className="text-[10px] sm:text-xs text-muted-foreground">
+                    Start Checkpoint
+                  </label>
                   <Input
                     placeholder="Start checkpoint ID"
                     value={leg.startId}
-                    onChange={(event) => updateLeg(index, { startId: event.target.value })}
+                    onChange={(event) =>
+                      updateLeg(index, { startId: event.target.value })
+                    }
+                    className="h-9 sm:h-10 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">End Checkpoint</label>
+                  <label className="text-[10px] sm:text-xs text-muted-foreground">
+                    End Checkpoint
+                  </label>
                   <Input
                     placeholder="End checkpoint ID"
                     value={leg.endId}
-                    onChange={(event) => updateLeg(index, { endId: event.target.value })}
+                    onChange={(event) =>
+                      updateLeg(index, { endId: event.target.value })
+                    }
+                    className="h-9 sm:h-10 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Expected Ship Date</label>
+                  <label className="text-[10px] sm:text-xs text-muted-foreground">
+                    Expected Ship Date
+                  </label>
                   <Input
                     type="datetime-local"
                     value={leg.expectedShip}
-                    onChange={(event) => updateLeg(index, { expectedShip: event.target.value })}
+                    onChange={(event) =>
+                      updateLeg(index, { expectedShip: event.target.value })
+                    }
+                    className="h-9 sm:h-10 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Estimated Arrival</label>
+                  <label className="text-[10px] sm:text-xs text-muted-foreground">
+                    Estimated Arrival
+                  </label>
                   <Input
                     type="datetime-local"
                     value={leg.estArrival}
-                    onChange={(event) => updateLeg(index, { estArrival: event.target.value })}
+                    onChange={(event) =>
+                      updateLeg(index, { estArrival: event.target.value })
+                    }
+                    className="h-9 sm:h-10 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Time Tolerance</label>
+                  <label className="text-[10px] sm:text-xs text-muted-foreground">
+                    Time Tolerance
+                  </label>
                   <Input
                     placeholder="2h"
                     value={leg.timeTolerance}
-                    onChange={(event) => updateLeg(index, { timeTolerance: event.target.value })}
+                    onChange={(event) =>
+                      updateLeg(index, { timeTolerance: event.target.value })
+                    }
+                    className="h-9 sm:h-10 text-sm"
                   />
                 </div>
                 {/* <div>
@@ -167,19 +212,33 @@ export function EditShipmentButton({ shipment, onUpdated }: EditShipmentButtonPr
                 </div> */}
               </div>
             ))}
-            <Button type="button" variant="secondary" size="sm" onClick={addLeg}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addLeg}
+              className="h-8 sm:h-9 text-xs sm:text-sm"
+            >
               Add leg
             </Button>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              className="h-9 sm:h-10 text-sm w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={updateMutation.isPending}>
+            <Button
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              className="h-9 sm:h-10 text-sm w-full sm:w-auto"
+            >
               {updateMutation.isPending ? (
                 <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
                   Saving...
                 </span>
               ) : (
